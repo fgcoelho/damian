@@ -1,0 +1,26 @@
+---
+title: Why Damian?
+description: 'the sql-first framework'
+icon: QuestionMarkCircle
+---
+
+## SQL-First
+
+Damian is the last Javascript database framework you will ever need, and that's because **it is not an orm** and **it is not a query builder**.
+
+When you use Damian, you write SQL, always:
+
+1. Write a migration file in SQL
+2. Generate types using only migrations
+3. Write a query in SQL with type-safe helpers
+4. Get type-safe results
+
+It is simple, built on battle-tested libraries such as [dbmate](dbmate) and [slonik](slonik), and it works.
+
+## Supported databases
+
+Only PostgreSQL is supported for now. But if slonik and dbmate support it, Damian will too.
+
+## Can I trust this library?
+
+Damian is actually just a thin wrapper around slonik, dbmate and WASM implementations of SQL databases. Most of what's working here is battle-tested code.

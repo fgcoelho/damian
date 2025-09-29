@@ -1,0 +1,296 @@
+---
+title: Usage
+description: Learn how to use damian with practical examples
+---
+
+## Client
+
+```ts
+import { createDb, createSQL } from 'damian/pg'
+
+export const db = createDb({
+    connectionString: process.env.DATABASE_URL as string,
+})
+
+export const sql = createSQL
+```
+
+## SELECT Queries
+
+### Single Table Queries
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const userId = '123e4567-e89b-12d3-a456-426614174000'
+
+const query = sql(UserTable)`
+    SELECT *
+    FROM ${UserTable}
+    WHERE ${UserTable.id} = ${userId}
+`
+
+const { rows } = await db.query(query)
+
+// Fully typed based on your schema
+const user = rows[0]
+```
+
+### Relational Queries
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable, PostTable } from './damian/schema'
+
+const phoneNumber = '+1234567890'
+
+const query = sql({
+    user: UserTable.schema,
+    posts: PostTable.schema.array()
+})`
+    SELECT 
+        ${sql.select(UserTable)},
+        ${sql.selectArray(PostTable)}
+    FROM ${UserTable}
+    INNER JOIN ${PostTable} 
+        ON ${UserTable.alias.id} = ${PostTable.alias.user_id}
+    WHERE ${UserTable.phone_number} = ${phoneNumber}
+`
+
+const { rows } = await db.query(query)
+
+// Both user and posts are fully typed
+const { user, posts } = rows[0]
+```
+
+### Table Aliases
+
+When you need to join multiple tables, use aliases:
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { ProjectTable, UserTable } from './damian/schema'
+
+const manager = sql.alias(UserTable, "manager")
+const reviewer = sql.alias(UserTable, "reviewer")
+const project = sql.alias(ProjectTable, "project")
+
+const projectId = 1
+
+const query = sql({
+    project: ProjectTable.schema,
+    manager: UserTable.schema,
+    reviewer: UserTable.schema,
+})`
+    SELECT
+        ${sql.select(project)},
+        ${sql.select(manager)},
+        ${sql.select(reviewer)}
+    FROM ${project}
+    INNER JOIN ${manager} 
+        ON ${project.manager_user_id} = ${manager.id}
+    INNER JOIN ${reviewer} 
+        ON ${project.reviewer_user_id} = ${reviewer.id}
+    WHERE ${project.id} = ${projectId}
+`
+
+const { rows } = await db.query(query)
+
+const { 
+    project: projectData, 
+    manager: managerData, 
+    reviewer: reviewerData 
+} = rows[0]
+```
+
+## INSERT Operations
+
+### Standard Insert
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const userData = {
+    name: 'John Doe',
+    email: 'john@example.com',
+    phone_number: '+1234567890'
+}
+
+const { cols, rows } = UserTable.createRows(userData)
+
+const query = sql`
+    INSERT INTO ${UserTable} ${sql.cols(cols)} 
+    VALUES ${sql.rows(rows)}
+`
+
+await db.query(query)
+```
+
+### Bulk Insert
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const users = [
+    { name: 'John Doe', email: 'john@example.com' },
+    { name: 'Jane Smith', email: 'jane@example.com' },
+    { name: 'Bob Johnson', email: 'bob@example.com' }
+]
+
+const { cols, rows } = UserTable.createRows(users)
+
+const query = sql`
+    INSERT INTO ${UserTable} ${sql.cols(cols)} 
+    VALUES ${sql.rows(rows)}
+`
+
+await db.query(query)
+```
+
+### Upsert (Insert with Conflict Resolution)
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const userData = {
+    name: 'John Doe',
+    email: 'john@example.com',
+    phone_number: '+1234567890'
+}
+
+const { cols, rows } = UserTable.createRows(userData)
+
+const query = sql`
+    INSERT INTO ${UserTable} ${sql.cols(cols)}
+    VALUES ${sql.rows(rows)}
+    ON CONFLICT (${UserTable.email}) DO UPDATE
+    SET ${sql.excludedCols(cols, ["id", "created_at"])}
+`
+
+await db.query(query)
+```
+
+## UPDATE Operations
+
+### Single Record Update
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const userId = '123e4567-e89b-12d3-a456-426614174000'
+const updateData = {
+    name: 'John Updated',
+    phone_number: '+1987654321'
+}
+
+const { cols, rows } = UserTable.createRows(updateData)
+
+const query = sql`
+    UPDATE ${UserTable}
+    SET ${sql.updateCols(cols)}
+    WHERE ${UserTable.id} = ${userId}
+`
+
+await db.query(query)
+```
+
+### Conditional Update
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const updateData = { name: 'Updated Name' }
+const { cols, rows } = UserTable.createRows(updateData)
+
+const query = sql`
+    UPDATE ${UserTable}
+    SET ${sql.updateCols(cols)}
+    WHERE ${UserTable.created_at} < NOW() - INTERVAL '1 year'
+    AND ${UserTable.name} IS NOT NULL
+`
+
+await db.query(query)
+```
+
+## DELETE Operations
+
+### Delete by ID
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const userId = '123e4567-e89b-12d3-a456-426614174000'
+
+const query = sql`
+    DELETE FROM ${UserTable}
+    WHERE ${UserTable.id} = ${userId}
+`
+
+await db.query(query)
+```
+
+### Conditional Delete
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { UserTable } from './damian/schema'
+
+const query = sql`
+    DELETE FROM ${UserTable}
+    WHERE ${UserTable.updated_at} < NOW() - INTERVAL '1 year'
+    AND ${UserTable.email} NOT LIKE '%@company.com'
+`
+
+const result = await db.query(query)
+```
+
+### Delete with Joins
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { PostTable, UserTable } from './damian/schema'
+
+const query = sql`
+    DELETE FROM ${PostTable}
+    USING ${UserTable}
+    WHERE ${PostTable.alias.user_id} = ${UserTable.alias.id}
+    AND ${UserTable.updated_at} < NOW() - INTERVAL '6 months'
+`
+
+await db.query(query)
+```
+
+### Bulk Delete with Return Values
+
+```ts
+import { db } from './database'
+import { sql } from 'damian'
+import { PostTable } from './damian/schema'
+
+const query = sql(PostTable)`
+    DELETE FROM ${PostTable}
+    WHERE 
+    ${PostTable.created_at} < NOW() - INTERVAL '2 years'
+    RETURNING ${PostTable.id}, ${PostTable.title}
+`
+
+const result = await db.query(query)
+```

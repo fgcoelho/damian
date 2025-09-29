@@ -1,0 +1,17 @@
+---
+title: PostgreSQL
+description: 'postgresql driver'
+icon: QuestionMarkCircle
+---
+
+## Driver
+
+```ts
+import { createDb, createSQL } from 'damian/pg'
+
+export const db = createDb({
+    connectionString: process.env.DATABASE_URL as string,
+})
+
+export const sql = createSQL()
+```

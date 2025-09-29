@@ -1,0 +1,32 @@
+---
+title: Custom
+description: 'Learn how to integrate damian with other databases'
+icon: QuestionMarkCircle
+---
+
+## Driver
+
+Damian uses slonik under the hood, so you can create a custom driver by using any slonik-compatible driver factory.
+
+In the example below, we are using [pglite](https://github.com/electric-sql/pglite) with the slonik driver.
+
+```ts
+import { PGLite } from '@electric-sql/pglite'
+import { createPGLiteDriverFactory } from 'slonik-pglite-driver'
+import { createDb, createSQL as customCreateSQL} from 'damian/custom'
+import { createSQL as pgCreateSQL } from 'damian/pg'
+
+const pgLiteDriverFactory = createPGLiteDriverFactory({
+    db: new PGLite()
+})
+
+export const db = createDb({
+    connectionString: process.env.DATABASE_URL as string,
+    driverFactory: pgLiteDriverFactory
+})
+
+export const dbSql = customCreateSQL()
+export const pgSql = pgCreateSQL()
+```
+
+You can choose which `sql` tag to use, the custom one will return a raw slonik tag object with no built-in helpers.

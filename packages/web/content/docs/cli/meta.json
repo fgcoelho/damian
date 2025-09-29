@@ -1,0 +1,11 @@
+{
+	"title": "CLI",
+	"pages": [
+		"new",
+		"generate",
+		"migrate",
+		"commit",
+		"rollback",
+		"sandbox"
+	]
+}

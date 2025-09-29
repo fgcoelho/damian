@@ -1,0 +1,123 @@
+---
+title: Workflow
+description: From development to production with Damian.
+---
+
+## Developing with Damian
+
+Damian uses [dbmate](https://github.com/amacneil/dbmate) for managing database migrations, and it works similarly to it, but with some differences.
+
+Also, Damian generates types based on your migrations.
+
+In this page we will cover the entire damian workflow, from development to production.
+
+## Workflow
+
+### Create a new migration
+
+Run ``damian new`` to create your first migration, it will prompt you for a name:
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npm damian new
+```
+```bash tab="pnpm"
+pnpm damian new
+```
+```bash tab="yarn"
+yarn damian new
+```
+</Tabs>
+
+### Edit the migration file
+
+This will create a new file in `./damian/.migrations/migration-name.sql` folder.
+
+Edit the file to create your first table:
+
+```sql
+-- migrate:up
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- migrate:down
+DROP TABLE users;
+```
+
+### Generate your types
+
+After writing your migration file, run:
+```bash
+pnpm damian generate
+```
+
+This will generate types under `./damian/__generated__/schema.ts`:
+
+```ts
+import { table } from "damian";
+import { z } from "zod";
+
+export const Schema = {
+    PUBLIC: "public",
+};
+
+export const UserTable = table(Schema.PUBLIC, "user", {
+	id: z.string().describe("uuid"),
+    name: z.string().describe("varchar"),
+    email: z.string().describe("varchar"),
+    created_at: z.string().describe("timestamp"),
+    updated_at: z.string().describe("timestamp"),
+});
+```
+
+### Apply the migration in development
+
+To apply the migration in development, run:
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+pnpm damian migrate --dev
+```
+```bash tab="pnpm"
+pnpm damian migrate --dev
+```
+```bash tab="yarn"
+yarn damian migrate --dev
+```
+</Tabs>
+
+This will apply all pending and committed migrations.
+
+### Commit your migration
+
+Migrations will only get applied in production if they are under `./damian/.migrations/commited` folder.
+
+To commit your migration, run:
+```bash
+pnpm damian commit
+```
+
+Now you can push your changes to your git repository.
+
+If there's more than one uncommited migration, damian will prompt you to select which ones you want to commit.
+
+### Deploy
+
+In your CI/CD pipeline, generate your types, otherwise your production build will (should?) fail:
+```bash
+pnpm damian generate
+```
+
+Then, apply the commited migrations to your production database:
+```bash
+pnpm damian migrate
+```
+
+### Congratulations!
+
+Congratulations, you are now using Damian in production!

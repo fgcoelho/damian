@@ -1,0 +1,200 @@
+---
+title: Quickstart
+description: Get started with damian in minutes.
+---
+
+import { File, Folder, Files } from "fumadocs-ui/components/files";
+
+### Installation
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+
+```bash tab="npm"
+npm install damian && npm install --save-dev @damiandb/cli
+```
+
+```bash tab="pnpm"
+pnpm add damian && pnpm add -D @damiandb/cli
+```
+
+```bash tab="yarn"
+yarn add damian && yarn add -D @damiandb/cli
+```
+
+</Tabs>
+
+### Configuration file
+
+<Tabs groupId='languages' persist items={['typescript', 'javascript']}>
+
+```ts title="env.config.ts" tab="typescript"
+import { config } from "damian";
+
+export default config({
+    root: "./damian",
+    connectionString: process.env.DATABASE_URL as string,
+    database: "postgres", // only postgres is supported for now
+    schema: "zod", // only zod is supported for now
+    envFile: ".env", // optional, defaults to .env
+});
+```
+
+```js title="env.config.js" tab="javascript"
+const { config } = require("damian");
+
+module.exports = config({
+    root: "./damian",
+    connectionString: process.env.DATABASE_URL as string,
+    database: "postgres", // only postgres is supported for now
+    schema: "zod", // only zod is supported for now
+    envFile: ".env", // optional, defaults to .env
+});
+```
+
+</Tabs>
+
+### Migrations
+
+Run ``damian new`` to create your first migration:
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npm damian new
+```
+
+```bash tab="pnpm"
+pnpm damian new
+```
+
+```bash tab="yarn"
+yarn damian new
+```
+</Tabs>
+
+This will create a new file in `./damian/.migrations` folder.
+
+Edit the file to create your first table:
+
+```sql
+-- migrate:up
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW()
+);
+
+-- migrate:down
+DROP TABLE users;
+```
+
+To apply the migration, run:
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npm damian migrate
+```
+```bash tab="pnpm"
+pnpm damian migrate
+```
+```bash tab="yarn"
+yarn damian migrate
+```
+</Tabs>
+
+### Generate
+After writing your migration file, run:
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npm damian generate
+```
+
+```bash tab="pnpm"
+pnpm damian generate
+```
+
+```bash tab="yarn"
+yarn damian generate
+```
+</Tabs>
+
+This will generate types under `./damian/__generated__/schema.ts`.
+
+### Path Alias
+
+Make sure you can import `damian/schema` from anywhere in your project without big relative imports:
+
+<Tabs groupId='languages' persist items={['typescript', 'javascript']}>
+
+```json tab="typescript" title="tsconfig.json"
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "damian/schema": ["./damian/__generated__/schema.ts"],
+    }
+  }
+}
+```
+
+```json tab="javascript" title="package.json"
+{
+  "imports": {
+    "#damian/schema": "./damian/__generated__/schema.js",
+  }
+}
+```
+
+```json tab="javascript" title="jsconfig.json"
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "#damian/schema": ["./damian/__generated__/schema.js"],
+    }
+  }
+}
+```
+</Tabs>
+
+### Usage
+
+Write your database client:
+
+```ts title="database.ts"
+import { createDb, createSQL } from '@damiandb/pg'
+
+export const db = createDb({
+    connectionString: process.env.DATABASE_URL as string,
+})
+
+export const sql = createSQL()
+```
+
+Query your database:
+
+```ts title="index.ts"
+import { db, sql } from './database'
+import { UserTable } from 'damian/schema'
+
+const query = sql(UserTable)`
+    SELECT *
+    FROM ${UserTable}
+    WHERE ${UserTable.name} = "damian"
+`
+
+const { rows } = await db.query(query)
+
+// Fully typed based on your schema
+const user = rows[0]
+```
+
+### Edit your `.gitignore`
+
+At last, it is best practice to ignore your generated schema file:
+
+```json title=".gitignore"
+**/__generated__
+```

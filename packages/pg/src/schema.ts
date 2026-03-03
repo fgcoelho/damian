@@ -125,7 +125,7 @@ export function any(sqlType: string = "jsonb"): Schema<any> {
 }
 
 export function object<T extends Record<string, any>>(
-  shape: { [K in keyof T]: StandardSchemaV1<T[K]> },
+  _shape: { [K in keyof T]: StandardSchemaV1<T[K]> },
   sqlType: string = "jsonb",
 ): Schema<T> {
   return {

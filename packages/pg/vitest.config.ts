@@ -6,7 +6,7 @@ const jsToTs = {
   name: "js-to-ts",
   resolveId(id: string, importer?: string) {
     if (importer && id.startsWith(".") && id.endsWith(".js")) {
-      const tsPath = id.slice(0, -3) + ".ts";
+      const tsPath = `${id.slice(0, -3)}.ts`;
       const resolved = path.resolve(path.dirname(importer), tsPath);
       return resolved;
     }

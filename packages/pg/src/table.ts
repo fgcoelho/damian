@@ -108,7 +108,7 @@ export function table<S extends Record<string, StandardSchemaV1>>(
 }
 
 function createObjectSchema<S extends Record<string, StandardSchemaV1>>(
-  shape: S,
+  _shape: S,
 ): StandardSchemaV1<InferRowType<S>> {
   return {
     "~standard": {

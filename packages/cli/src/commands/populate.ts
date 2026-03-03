@@ -1,85 +1,39 @@
-import path from "node:path";
-import { Worker } from "node:worker_threads";
 import { checkbox, select } from "@inquirer/prompts";
 import { Flags } from "@oclif/core";
 import chalk from "chalk";
-import { glob } from "glob";
 import logSymbols from "log-symbols";
 import ora from "ora";
 import { BaseCommand } from "../base.js";
-import type { DamianConfig } from "../config.js";
-import type {
-  PopulateWorkerInput,
-  PopulateWorkerMessage,
-} from "../workers/populate.js";
+import {
+  discoverPopulators,
+  type PopulatorMeta,
+  type PopulatorRunResult,
+  runPopulators,
+} from "../core/populate/runner.js";
 
-export type Populator = { group: string; name: string; filepath: string };
+export type Populator = PopulatorMeta;
 
-export async function discoverPopulators(
-  cfg: DamianConfig,
-): Promise<Populator[]> {
-  const cwd = process.cwd();
-  const populatorsRoot = path.resolve(cwd, cfg.root, "populators");
+export function handlePopulatorFailure(
+  result: { ok: false; message: string; name?: string },
+  spinners: Map<string, ReturnType<typeof ora>>,
+  fallbackSpinner?: ReturnType<typeof ora>,
+): void {
+  const active =
+    (result.name ? spinners.get(result.name) : undefined) ??
+    [...spinners.values()].find((s) => s.isSpinning);
 
-  const files = await glob("**/*.populator.ts", {
-    cwd: populatorsRoot,
-    absolute: true,
-  });
-
-  return files.sort().map((filepath) => {
-    const rel = path.relative(populatorsRoot, filepath);
-    const parts = rel.split(path.sep);
-    const group = parts.length > 1 ? parts[0] : "default";
-    const name = path.basename(filepath, ".populator.ts");
-
-    return { group, name, filepath };
-  });
+  if (active) {
+    active.fail(`${active.text} failed`);
+    process.stderr.write(`${chalk.red(result.message)}\n`);
+  } else if (fallbackSpinner) {
+    fallbackSpinner.fail(result.message);
+  } else {
+    process.stderr.write(`${logSymbols.error} ${result.message}\n`);
+  }
 }
 
-export type RunPopulatorsResult =
-  | { ok: true }
-  | { ok: false; message: string; name?: string };
-
-export interface RunPopulatorsOptions {
-  onStart: (name: string) => void;
-  onDone: (name: string) => void;
-  onValidated?: () => void;
-}
-
-export function runPopulators(
-  populators: Populator[],
-  options: RunPopulatorsOptions,
-): Promise<RunPopulatorsResult> {
-  const { onStart, onDone, onValidated } = options;
-  const cwd = process.cwd();
-  const workerFile = path.join(__dirname, "populate.cjs");
-  const workerInput: PopulateWorkerInput = {
-    filepaths: populators.map((p) => p.filepath),
-    cwd,
-  };
-
-  return new Promise<RunPopulatorsResult>((resolve) => {
-    const worker = new Worker(workerFile, { workerData: workerInput });
-
-    worker.on("message", (msg: PopulateWorkerMessage) => {
-      if (msg.type === "validated") {
-        onValidated?.();
-      } else if (msg.type === "start") {
-        onStart(msg.name);
-      } else if (msg.type === "done") {
-        onDone(msg.name);
-      } else if (msg.type === "finished") {
-        resolve({ ok: true });
-      } else if (msg.type === "error") {
-        resolve({ ok: false, message: msg.message, name: msg.name });
-      }
-    });
-
-    worker.once("error", (err: Error) => {
-      resolve({ ok: false, message: err.message });
-    });
-  });
-}
+export { discoverPopulators, runPopulators };
+export type { PopulatorRunResult };
 
 export default class Populate extends BaseCommand<typeof Populate> {
   static description = "Run database populators";
@@ -128,7 +82,7 @@ export default class Populate extends BaseCommand<typeof Populate> {
 
     const inGroup = allPopulators.filter((p) => p.group === selectedGroup);
 
-    let selected: Populator[];
+    let selected: PopulatorMeta[];
 
     if (flags.group && flags.populator) {
       const match = inGroup.find((p) => p.name === flags.populator);
@@ -141,7 +95,7 @@ export default class Populate extends BaseCommand<typeof Populate> {
     } else if (flags.group) {
       selected = inGroup;
     } else {
-      selected = await checkbox<Populator>({
+      selected = await checkbox<PopulatorMeta>({
         message: `Select populators to run from [${chalk.cyan(selectedGroup)}]:`,
         choices: inGroup.map((p) => ({ name: p.name, value: p })),
       });

@@ -1,5 +1,5 @@
 import { Command, Flags, type Interfaces } from "@oclif/core";
-import { type DamianConfig, loadConfig, loadEnv } from "./config.js";
+import { type DamianConfig, loadConfig, loadEnv } from "./core/config.js";
 
 export type BaseFlags<T extends typeof Command> = Interfaces.InferredFlags<
   typeof BaseCommand.baseFlags & T["flags"]

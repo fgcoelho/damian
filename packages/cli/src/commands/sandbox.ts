@@ -1,18 +1,23 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
-import { select } from "@inquirer/prompts";
+import { checkbox } from "@inquirer/prompts";
 import chalk from "chalk";
 import logSymbols from "log-symbols";
 import ora from "ora";
 import { BaseCommand } from "../base.js";
-import { dbmateBin, dbmateEnv } from "../utils/dbmate.js";
-import { resetDatabase } from "../utils/reset.js";
-import Generate from "./generate.js";
+import { buildDbmateEnv, dbmateBin } from "../core/dbmate.js";
 import {
   discoverPopulators,
-  type Populator,
+  type PopulatorMeta,
   runPopulators,
-} from "./populate.js";
+} from "../core/populate/runner.js";
+import {
+  partitionPopulators,
+  resolveSelectedSandboxPopulators,
+} from "../core/sandbox.js";
+import { resetDatabase } from "../utils/reset.js";
+import Generate from "./generate.js";
+import { handlePopulatorFailure } from "./populate.js";
 
 export default class Sandbox extends BaseCommand<typeof Sandbox> {
   static description =
@@ -27,100 +32,129 @@ export default class Sandbox extends BaseCommand<typeof Sandbox> {
       );
     }
 
-    let spin = ora({ text: "Resetting database...", spinner: "dots" }).start();
-    await resetDatabase(this.cfg.url);
-    spin.succeed("Database reset.");
-
-    const migrationsDir = path.resolve(cwd, this.cfg.root, ".migrations");
-
-    spin = ora({ text: "Running migrations...", spinner: "dots" }).start();
-    execFileSync(dbmateBin(), ["migrate"], {
-      stdio: "pipe",
-      env: dbmateEnv(this.cfg, migrationsDir),
-    });
-    spin.succeed("Migrations applied.");
-
+    await this.resetAndMigrate(cwd);
     await Generate.run(this.argv, this.config);
 
     const allPopulators = await discoverPopulators(this.cfg);
-    const corePopulators = allPopulators.filter((p) => p.group === "core");
-    const sandboxPopulators = allPopulators.filter(
-      (p) => p.group === "sandbox",
-    );
+    const { core, sandbox } = partitionPopulators(allPopulators);
 
-    if (corePopulators.length > 0) {
-      this.log("");
-      const coreSpinners = new Map<string, ReturnType<typeof ora>>();
-
-      const coreResult = await runPopulators(corePopulators, {
-        onStart: (name) => {
-          coreSpinners.set(
-            name,
-            ora({
-              text: `${chalk.dim("[core]")} ${name}`,
-              spinner: "dots",
-            }).start(),
-          );
-        },
-        onDone: (name) => {
-          coreSpinners.get(name)?.succeed(`${chalk.dim("[core]")} ${name}`);
-        },
-      });
-
-      if (!coreResult.ok) {
-        const active =
-          (coreResult.name ? coreSpinners.get(coreResult.name) : undefined) ??
-          [...coreSpinners.values()].find((s) => s.isSpinning);
-
-        if (active) {
-          active.fail(`${active.text} failed`);
-          process.stderr.write(`${chalk.red(coreResult.message)}\n`);
-        } else {
-          process.stderr.write(`${logSymbols.error} ${coreResult.message}\n`);
-        }
-        process.exit(1);
-      }
+    if (core.length > 0) {
+      await this.runCorePopulators(core);
     }
 
-    if (sandboxPopulators.length === 0) {
+    if (sandbox.length === 0) {
       this.log(
-        `\n${logSymbols.warning} No sandbox populators found. Create .populator.ts files under ${chalk.cyan(`${this.cfg.root}/populators/sandbox/`)}.`,
+        `${logSymbols.warning} No sandbox populators found. Create .populator.ts files under ${chalk.cyan(`${this.cfg.root}/populators/sandbox/`)}.`,
       );
       process.exit(0);
     }
 
-    this.log("");
+    const chosen = await this.promptSandboxSelection(sandbox);
 
-    const chosen = await select<Populator>({
-      message: "Select a sandbox populator to run:",
-      choices: sandboxPopulators.map((p) => ({ name: p.name, value: p })),
-    });
-
-    let sandboxSpin!: ReturnType<typeof ora>;
-
-    const sandboxResult = await runPopulators([chosen], {
-      onStart: (name) => {
-        sandboxSpin = ora({
-          text: `${chalk.dim("[sandbox]")} ${name}`,
-          spinner: "dots",
-        }).start();
-      },
-      onDone: (name) => {
-        sandboxSpin.succeed(`${chalk.dim("[sandbox]")} ${name}`);
-      },
-    });
-
-    if (!sandboxResult.ok) {
-      if (sandboxSpin?.isSpinning) {
-        sandboxSpin.fail(`${sandboxSpin.text} failed`);
-        process.stderr.write(`${chalk.red(sandboxResult.message)}\n`);
-      } else {
-        process.stderr.write(`${logSymbols.error} ${sandboxResult.message}\n`);
-      }
-      process.exit(1);
+    if (chosen.length === 0) {
+      this.log(`${logSymbols.info} No sandbox populators selected.`);
+      process.exit(0);
     }
 
-    this.log(`\n${logSymbols.success} ${chalk.green("Sandbox ready.")}`);
+    await this.runSandboxPopulators(chosen);
+
+    this.log(`${logSymbols.success} ${chalk.green("Sandbox ready.")}`);
     process.exit(0);
+  }
+
+  private async resetAndMigrate(cwd: string): Promise<void> {
+    let spin = ora({ text: "Resetting database...", spinner: "dots" }).start();
+    await resetDatabase(this.cfg.url as string);
+    spin.succeed("Database reset.");
+
+    const migrationsDir = path.resolve(cwd, this.cfg.root, ".migrations");
+    spin = ora({ text: "Running migrations...", spinner: "dots" }).start();
+    execFileSync(dbmateBin(), ["migrate"], {
+      stdio: "pipe",
+      env: buildDbmateEnv(this.cfg, migrationsDir),
+    });
+    spin.succeed("Migrations applied.");
+  }
+
+  private async runCorePopulators(core: PopulatorMeta[]): Promise<void> {
+    const spin = ora({
+      text: `Validating ${core.length} core populator(s)...`,
+      spinner: "dots",
+    }).start();
+
+    const spinners = new Map<string, ReturnType<typeof ora>>();
+
+    const result = await runPopulators(core, {
+      onValidated: () => {
+        spin.succeed(`Validated ${core.length} core populator(s).`);
+      },
+      onStart: (name) => {
+        spinners.set(
+          name,
+          ora({
+            text: `${chalk.dim("[core]")} ${name}`,
+            spinner: "dots",
+          }).start(),
+        );
+      },
+      onDone: (name) => {
+        spinners.get(name)?.succeed(`${chalk.dim("[core]")} ${name}`);
+      },
+    });
+
+    if (!result.ok) {
+      handlePopulatorFailure(
+        result as { ok: false; message: string; name?: string },
+        spinners,
+        spin,
+      );
+      process.exit(1);
+    }
+  }
+
+  private async promptSandboxSelection(
+    sandbox: PopulatorMeta[],
+  ): Promise<PopulatorMeta[]> {
+    const selectedNames = await checkbox<string>({
+      message: "Select sandbox populators to run:",
+      choices: sandbox.map((p) => ({ name: p.name, value: p.name })),
+    });
+    return resolveSelectedSandboxPopulators(sandbox, selectedNames);
+  }
+
+  private async runSandboxPopulators(chosen: PopulatorMeta[]): Promise<void> {
+    const spin = ora({
+      text: `Validating ${chosen.length} sandbox populator(s)...`,
+      spinner: "dots",
+    }).start();
+
+    const spinners = new Map<string, ReturnType<typeof ora>>();
+
+    const result = await runPopulators(chosen, {
+      onValidated: () => {
+        spin.succeed(`Validated ${chosen.length} sandbox populator(s).`);
+      },
+      onStart: (name) => {
+        spinners.set(
+          name,
+          ora({
+            text: `${chalk.dim("[sandbox]")} ${name}`,
+            spinner: "dots",
+          }).start(),
+        );
+      },
+      onDone: (name) => {
+        spinners.get(name)?.succeed(`${chalk.dim("[sandbox]")} ${name}`);
+      },
+    });
+
+    if (!result.ok) {
+      handlePopulatorFailure(
+        result as { ok: false; message: string; name?: string },
+        spinners,
+        spin,
+      );
+      process.exit(1);
+    }
   }
 }

@@ -1,6 +1,7 @@
 import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
 import { createJiti } from "jiti";
+import { topoSort } from "../core/populate/topo-sort.js";
 import { POPULATOR_BRAND, type PopulatorInstance } from "../populator.js";
 import { getTsconfigAliases } from "../utils/tsconfig.js";
 
@@ -22,44 +23,32 @@ function nameOf(filepath: string): string {
   return path.basename(filepath, ".populator.ts");
 }
 
-function topoSort(names: string[], deps: Map<string, string[]>): string[] {
-  const visited = new Set<string>();
-  const result: string[] = [];
-
-  function visit(name: string) {
-    if (visited.has(name)) return;
-    visited.add(name);
-    for (const dep of deps.get(name) ?? []) {
-      if (!names.includes(dep)) {
-        throw new Error(
-          `Populator "${name}" depends on "${dep}" which is not in the selected set.`,
-        );
-      }
-      visit(dep);
-    }
-    result.push(name);
-  }
-
-  for (const name of names) {
-    visit(name);
-  }
-
-  return result;
+function sendError(name: string, message: string): void {
+  parentPort?.postMessage({
+    type: "error",
+    name,
+    message,
+  } satisfies PopulateWorkerMessage);
 }
 
-async function run() {
+type PopulatorEntry = { name: string; mod: unknown };
+type PopulatorInstance_ = { name: string; instance: PopulatorInstance };
+
+async function loadEntries(): Promise<PopulatorEntry[]> {
   const jiti = createJiti(import.meta.url, {
     alias: getTsconfigAliases(cwd),
     jsx: true,
   });
 
-  const entries = await Promise.all(
+  return Promise.all(
     filepaths.map(async (filepath) => {
       const mod = await jiti.import(filepath);
       return { name: nameOf(filepath), mod };
     }),
   );
+}
 
+function validatePopulators(entries: PopulatorEntry[]): boolean {
   for (const { name, mod } of entries) {
     const def = (mod as { default?: unknown }).default;
     if (
@@ -68,16 +57,47 @@ async function run() {
       !(POPULATOR_BRAND in def) ||
       (def as Record<string, unknown>)[POPULATOR_BRAND] !== true
     ) {
-      parentPort?.postMessage({
-        type: "error",
+      sendError(
         name,
-        message: `${name}.populator.ts does not export a default populator() instance.`,
-      } satisfies PopulateWorkerMessage);
-      return;
+        `${name}.populator.ts does not export a default populator() instance.`,
+      );
+      return false;
     }
   }
+  return true;
+}
 
-  const instances = entries.map(({ name, mod }) => ({
+async function executePopulators(
+  order: string[],
+  byName: Map<string, PopulatorInstance>,
+): Promise<boolean> {
+  for (const name of order) {
+    // biome-ignore lint/style/noNonNullAssertion: order comes from byName.keys()
+    const instance = byName.get(name)!;
+    parentPort?.postMessage({
+      type: "start",
+      name,
+    } satisfies PopulateWorkerMessage);
+    try {
+      await instance.populate();
+    } catch (err: unknown) {
+      sendError(name, err instanceof Error ? err.message : String(err));
+      return false;
+    }
+    parentPort?.postMessage({
+      type: "done",
+      name,
+    } satisfies PopulateWorkerMessage);
+  }
+  return true;
+}
+
+async function run() {
+  const entries = await loadEntries();
+
+  if (!validatePopulators(entries)) return;
+
+  const instances: PopulatorInstance_[] = entries.map(({ name, mod }) => ({
     name,
     instance: (mod as { default: PopulatorInstance }).default,
   }));
@@ -89,12 +109,7 @@ async function run() {
   try {
     order = topoSort([...byName.keys()], deps);
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    parentPort?.postMessage({
-      type: "error",
-      name: "",
-      message,
-    } satisfies PopulateWorkerMessage);
+    sendError("", err instanceof Error ? err.message : String(err));
     return;
   }
 
@@ -102,37 +117,14 @@ async function run() {
     type: "validated",
   } satisfies PopulateWorkerMessage);
 
-  for (const name of order) {
-    const instance = byName.get(name) as PopulatorInstance;
+  const succeeded = await executePopulators(order, byName);
+  if (succeeded) {
     parentPort?.postMessage({
-      type: "start",
-      name,
-    } satisfies PopulateWorkerMessage);
-    try {
-      await instance.populate();
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : String(err);
-      parentPort?.postMessage({
-        type: "error",
-        name,
-        message,
-      } satisfies PopulateWorkerMessage);
-      return;
-    }
-    parentPort?.postMessage({
-      type: "done",
-      name,
+      type: "finished",
     } satisfies PopulateWorkerMessage);
   }
-
-  parentPort?.postMessage({ type: "finished" } satisfies PopulateWorkerMessage);
 }
 
 run().catch((err: unknown) => {
-  const message = err instanceof Error ? err.message : String(err);
-  parentPort?.postMessage({
-    type: "error",
-    name: "",
-    message,
-  } satisfies PopulateWorkerMessage);
+  sendError("", err instanceof Error ? err.message : String(err));
 });

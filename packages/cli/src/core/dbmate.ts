@@ -1,13 +1,14 @@
+import { execFileSync } from "node:child_process";
 import chalk from "chalk";
 import { resolveBinary } from "dbmate";
 import logSymbols from "log-symbols";
-import type { DamianConfig } from "../config.js";
+import type { DamianConfig } from "./config.js";
 
 export function dbmateBin(): string {
   return resolveBinary();
 }
 
-export function dbmateEnv(
+export function buildDbmateEnv(
   cfg: DamianConfig,
   migrationsDir: string,
 ): NodeJS.ProcessEnv {
@@ -23,6 +24,18 @@ export function dbmateEnv(
   }
 
   return env;
+}
+
+export function runDbmateCommand(
+  command: "migrate" | "rollback",
+  cfg: DamianConfig,
+  migrationsDir: string,
+): string {
+  const out = execFileSync(dbmateBin(), [command], {
+    stdio: "pipe",
+    env: buildDbmateEnv(cfg, migrationsDir),
+  });
+  return out.toString().trim();
 }
 
 export function formatDbmateLine(line: string): string {
@@ -42,4 +55,11 @@ export function formatDbmateLine(line: string): string {
   }
 
   return chalk.dim(line);
+}
+
+export function formatDbmateOutput(raw: string): string {
+  return raw
+    .split("\n")
+    .map((l) => formatDbmateLine(l.trim()))
+    .join("\n");
 }

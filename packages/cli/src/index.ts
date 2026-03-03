@@ -8,8 +8,7 @@ import Reset from "./commands/reset.js";
 import Rollback from "./commands/rollback.js";
 import Sandbox from "./commands/sandbox.js";
 
-// Kept for backward compatibility and internal imports
-export { config } from "./config.js";
+export { config } from "./core/config.js";
 export type { PopulatorDefinition } from "./populator.js";
 export { populator } from "./populator.js";
 

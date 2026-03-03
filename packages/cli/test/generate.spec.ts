@@ -8,6 +8,7 @@ import {
   parseTables,
   readTypings,
 } from "../src/commands/generate.js";
+import { buildSchemaFromMigrations } from "../src/core/generate/worker.js";
 
 describe("capitalize()", () => {
   it("uppercases the first character", () => {
@@ -286,6 +287,33 @@ CREATE TABLE "public"."posts" (
   });
 });
 
+describe("buildSchemaFromMigrations()", () => {
+  it("returns SQL containing a CREATE TABLE for a simple migration", async () => {
+    const migrationSql = [
+      "-- migrate:up",
+      'CREATE TABLE "public"."users" ("id" uuid NOT NULL);',
+      "-- migrate:down",
+      'DROP TABLE "public"."users";',
+    ].join("\n");
+
+    let tmpDir: string;
+    tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "damian-worker-test-"));
+    fs.writeFileSync(
+      path.join(tmpDir, "20240101000000_users.sql"),
+      migrationSql,
+    );
+
+    try {
+      const result = await buildSchemaFromMigrations(tmpDir, [
+        "20240101000000_users.sql",
+      ]);
+      expect(result).toContain("users");
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("readTypings()", () => {
   let tmpDir: string;
 
@@ -318,5 +346,61 @@ describe("readTypings()", () => {
     fs.writeFileSync(typingsFile, "const x = 1;");
     const result = readTypings(typingsFile);
     expect(result).toEqual({});
+  });
+
+  it("parses new-format typings() call with nested schema.table.column keys", () => {
+    const typingsFile = path.join(tmpDir, "typings.ts");
+    fs.writeFileSync(
+      typingsFile,
+      [
+        "import { typings } from '@damiandb/pg';",
+        "export default typings({",
+        "  public: {",
+        "    users: {",
+        "      role: z.type<UserRole>(),",
+        "    },",
+        "  },",
+        "});",
+      ].join("\n"),
+    );
+    const result = readTypings(typingsFile);
+    expect(result["public.users.role"]).toBe("custom");
+  });
+
+  it("parses all entries including those late in a large typings() call", () => {
+    const typingsFile = path.join(tmpDir, "typings.ts");
+    fs.writeFileSync(
+      typingsFile,
+      [
+        "import { typings } from '@damiandb/pg';",
+        "export default typings({",
+        "  billing: {",
+        "    billingEvent: {",
+        "      kind: z.type<BillingKind>(),",
+        "    },",
+        "  },",
+        "  public: {",
+        "    users: {",
+        "      role: z.type<UserRole>(),",
+        "    },",
+        "  },",
+        "  food: {",
+        "    food: {",
+        "      market: z.type<FoodMarket>(),",
+        "    },",
+        "  },",
+        "  search: {",
+        "    searchIndex: {",
+        "      kind: z.type<SearchKind>(),",
+        "    },",
+        "  },",
+        "});",
+      ].join("\n"),
+    );
+    const result = readTypings(typingsFile);
+    expect(result["billing.billingEvent.kind"]).toBe("custom");
+    expect(result["public.users.role"]).toBe("custom");
+    expect(result["food.food.market"]).toBe("custom");
+    expect(result["search.searchIndex.kind"]).toBe("custom");
   });
 });

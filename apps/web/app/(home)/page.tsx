@@ -15,8 +15,9 @@ export default function HomePage() {
         </p>
 
         <p>
-          No schema diffing. No shadow databases. No "push" shortcuts. Just raw
-          SQL and a single workflow.
+          No schema DSL. No diff engine. No "push" shortcut. Write SQL
+          migrations — Damian replays them to generate TypeScript types. One
+          workflow, from local to production.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 not-prose my-8">
@@ -27,7 +28,7 @@ export default function HomePage() {
             Get Started <ArrowUpRightIcon className="size-4 ml-2" />
           </Link>
           <Link
-            href="/docs/"
+            href="/docs"
             className="inline-flex items-center px-6 py-3 border border-fd-border text-fd-foreground font-semibold rounded-lg hover:bg-fd-muted/50 transition-colors no-underline"
           >
             View Docs
@@ -40,31 +41,34 @@ export default function HomePage() {
           <div className="border border-fd-border rounded-lg p-6">
             <h3 className="font-semibold mb-2 text-base inline-flex items-center">
               <Icon icon="CodeBracket" className="size-5 mr-2" />
-              No Schema DSL
+              SQL is the source of truth
             </h3>
             <p className="text-fd-muted-foreground text-sm">
-              Stop modeling your database in TypeScript just to generate SQL.
-              Write SQL directly. Let the types be derived from it.
+              Write migrations in SQL. Damian replays them in-memory and derives
+              TypeScript types from the result. The schema lives in your
+              migration files, not in a TypeScript DSL.
             </p>
           </div>
           <div className="border border-fd-border rounded-lg p-6">
             <h3 className="font-semibold mb-2 text-base inline-flex items-center">
               <Icon icon="ShieldCheck" className="size-5 mr-2" />
-              No Diff Magic
+              One workflow
             </h3>
             <p className="text-fd-muted-foreground text-sm">
-              No schema diff engine guessing renames or constraint intent.
-              Migrations are explicit, deterministic, and reviewable.
+              The command that runs migrations locally is the same command you
+              run in production. No shadow database, no drift detection, no
+              generated migrations to second-guess.
             </p>
           </div>
           <div className="border border-fd-border rounded-lg p-6">
             <h3 className="font-semibold mb-2 text-base inline-flex items-center">
               <Icon icon="Wrench" className="size-5 mr-2" />
-              SQL + Type Safety
+              Type-safe SQL
             </h3>
             <p className="text-fd-muted-foreground text-sm">
-              Write real SQL with template literals and keep full type safety.
-              Compile-time validation comes from your actual schema.
+              Write real SQL with tagged template literals. Column references,
+              parameter bindings, and row shapes are all checked at compile time
+              against types that come directly from your schema.
             </p>
           </div>
         </div>
@@ -74,137 +78,150 @@ export default function HomePage() {
         <Tabs
           groupId="operation"
           persist
-          items={["SELECT", "INSERT", "UPDATE"]}
+          items={["SELECT", "INSERT", "UPDATE", "DELETE"]}
         >
           <Tab value="SELECT">
             <DynamicCodeBlock
               lang="ts"
-              code={`import { db, sql } from '@damiandb/pg'
-import { UserTable, PostTable } from '@generated/damian'
+              code={`import { db, sql } from './db'
+import { UsersTable, PostsTable } from 'tables'
 
-// Simple query with type safety
-const userId = '123e4567-e89b-12d3-a456-426614174000'
+// Simple typed query
+const { rows } = await db.query(
+    sql(UsersTable)\`SELECT * FROM \${UsersTable} WHERE \${UsersTable.email} = \${"alice@example.com"}\`
+)
+const user = rows[0] // { id: number, name: string, email: string, ... }
 
-const query = sql(UserTable)\`
-  SELECT *
-  FROM \${UserTable}
-  WHERE \${UserTable.id} = \${userId}
-\`
+// Relational query — join two tables, group results
+const { rows: results } = await db.query(
+    sql(UsersTable.schema)\`
+        SELECT
+            \${sql.output(UsersTable).json()},
+            \${sql.output(PostsTable).json().array()}
+        FROM \${UsersTable}
+        INNER JOIN \${PostsTable} ON \${UsersTable.id} = \${PostsTable.user_id}
+        GROUP BY \${UsersTable.id}
+    \`
+)
 
-const { rows } = await db.query(query)
-const user = rows[0] // Fully typed!
-
-// Relational queries
-const relationQuery = sql({
-  user: UserTable.schema,
-  posts: PostTable.schema.array()
-})\`
-  SELECT 
-    \${sql.select(UserTable)},
-    \${sql.selectArray(PostTable)}
-  FROM \${UserTable}
-  LEFT JOIN \${PostTable} 
-    ON \${UserTable.alias.id} = \${PostTable.alias.user_id}
-  WHERE \${UserTable.phone_number} = '+1234567890'
-\`
-
-const { user, posts } = await db.query(relationQuery)`}
+// WHERE IN — emits FALSE safely when array is empty
+const { rows: filtered } = await db.query(
+    sql(UsersTable)\`SELECT * FROM \${UsersTable} WHERE \${sql.inArray(UsersTable.id, [1, 2, 3])}\`
+)`}
             />
           </Tab>
           <Tab value="INSERT">
             <DynamicCodeBlock
               lang="ts"
-              code={`import { db, sql } from './database'
-import { UserTable } from './damian/schema'
+              code={`import { db, sql } from './db'
+import { UsersTable } from 'tables'
 
-// Single insert
-const userData = {
-  name: 'John Doe',
-  email: 'john@example.com',
-  phone_number: '+1234567890'
-}
+// Single row
+const { cols, row } = UsersTable.createRow({
+    name: "Alice",
+    email: "alice@example.com",
+})
 
-const { cols, rows } = UserTable.createRows(userData)
-
-const insertQuery = sql\`
-  INSERT INTO \${UserTable} \${sql.cols(cols)} 
-  VALUES \${sql.rows(rows)}
-\`
-
-await db.query(insertQuery)
+await db.query(
+    sql.void\`INSERT INTO \${UsersTable} \${sql.tuple(cols)} VALUES \${sql.tuple(row)}\`
+)
 
 // Bulk insert
-const users = [
-  { name: 'John Doe', email: 'john@example.com' },
-  { name: 'Jane Smith', email: 'jane@example.com' },
-  { name: 'Bob Johnson', email: 'bob@example.com' }
+const records = [
+    { name: "Alice", email: "alice@example.com" },
+    { name: "Bob",   email: "bob@example.com" },
 ]
 
-const { cols: bulkCols, rows: bulkRows } = UserTable.createRows(users)
+const { cols: bulkCols, rows } = UsersTable.createRows(records)
 
-const bulkQuery = sql\`
-  INSERT INTO \${UserTable} \${sql.cols(bulkCols)} 
-  VALUES \${sql.rows(bulkRows)}
-\`
+await db.query(
+    sql.void\`INSERT INTO \${UsersTable} \${sql.tuple(bulkCols)} VALUES \${sql.tuples(rows)}\`
+)
 
-await db.query(bulkQuery)`}
+// Upsert
+const { cols: uCols, rows: uRows } = UsersTable.createRows([{ name: "Alice", email: "alice@example.com" }])
+
+await db.query(
+    sql.void\`
+        INSERT INTO \${UsersTable} \${sql.tuple(uCols)}
+        VALUES \${sql.tuples(uRows)}
+        ON CONFLICT (\${UsersTable.email}) DO UPDATE
+        SET \${sql.excluded(uCols, [UsersTable.id])}
+    \`
+)`}
             />
           </Tab>
           <Tab value="UPDATE">
             <DynamicCodeBlock
               lang="ts"
-              code={`import { db, sql } from './database'
-import { UserTable } from './damian/schema'
+              code={`import { db, sql } from './db'
+import { UsersTable } from 'tables'
 
-// Update with helper methods
-const userId = '123e4567-e89b-12d3-a456-426614174000'
-const updateData = {
-  name: 'John Updated',
-  phone_number: '+1987654321'
-}
+// Simple update
+await db.query(
+    sql.void\`UPDATE \${UsersTable} SET name = \${"Alice Renamed"} WHERE \${UsersTable.email} = \${"alice@example.com"}\`
+)
 
-const { cols, rows } = UserTable.createRows(updateData)
+// Dynamic WHERE using sql.identity
+const nameFilter = shouldFilter
+    ? sql.fragment\`\${UsersTable.name} = \${"Alice"}\`
+    : sql.identity("and") // → TRUE, safe no-op in AND chains
 
-const updateQuery = sql\`
-  UPDATE \${UserTable}
-  SET \${sql.updateCols(cols)}
-  WHERE \${UserTable.id} = \${userId}
-\`
+await db.query(
+    sql(UsersTable)\`SELECT * FROM \${UsersTable} WHERE \${nameFilter}\`
+)`}
+            />
+          </Tab>
+          <Tab value="DELETE">
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { db, sql } from './db'
+import { PostsTable } from 'tables'
 
-await db.query(updateQuery)
+// Fire-and-forget delete
+await db.query(
+    sql.void\`DELETE FROM \${PostsTable} WHERE \${PostsTable.id} = \${42}\`
+)
 
-// Upsert (insert with conflict resolution)
-const upsertQuery = sql\`
-  INSERT INTO \${UserTable} \${sql.cols(cols)}
-  VALUES \${sql.rows(rows)}
-  ON CONFLICT (\${UserTable.email}) DO UPDATE
-  SET \${sql.excludedCols(cols, ["id", "created_at"])}
-\`
+// Delete with RETURNING — rows are fully typed
+const { rows } = await db.query(
+    sql(PostsTable)\`DELETE FROM \${PostsTable} WHERE \${PostsTable.title} = \${"Draft"} RETURNING *\`
+)
 
-await db.query(upsertQuery)`}
+// Wrapped in a transaction — throws → rolled back automatically
+await db.transaction(async (tx) => {
+    await tx.query(sql.void\`DELETE FROM \${PostsTable} WHERE \${PostsTable.user_id} = \${1}\`)
+    await tx.query(sql.void\`DELETE FROM \${UsersTable} WHERE \${UsersTable.id} = \${1}\`)
+})`}
             />
           </Tab>
         </Tabs>
 
         <h2>Installation</h2>
 
-        <Tabs items={["npm", "pnpm", "yarn", "bun"]}>
+        <Tabs items={["npm", "pnpm", "yarn"]}>
           <Tab value="npm">
-            <DynamicCodeBlock lang="bash" code={`npm i --save-dev damian`} />
+            <DynamicCodeBlock
+              lang="bash"
+              code={`npm install --save-dev damian && npm install @damiandb/pg`}
+            />
           </Tab>
           <Tab value="pnpm">
-            <DynamicCodeBlock lang="bash" code={`pnpm add -D damian`} />
+            <DynamicCodeBlock
+              lang="bash"
+              code={`pnpm add -D damian && pnpm add @damiandb/pg`}
+            />
           </Tab>
           <Tab value="yarn">
-            <DynamicCodeBlock lang="bash" code={`yarn add -D damian`} />
-          </Tab>
-          <Tab value="bun">
-            <DynamicCodeBlock lang="bash" code={`bun add -d damian`} />
+            <DynamicCodeBlock
+              lang="bash"
+              code={`yarn add -D damian && yarn add @damiandb/pg`}
+            />
           </Tab>
         </Tabs>
 
         <p>
-          <Link href="/docs/quickstart">Get Started →</Link>
+          <Link href="/docs/fundamentals/quickstart">Get Started →</Link>
         </p>
       </article>
     </main>

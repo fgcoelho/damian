@@ -134,24 +134,24 @@ The alias must differ from the original table name — Damian throws at runtime 
 import { db, sql } from './db';
 import { UsersTable } from 'tables';
 
-const { cols, row, types } = UsersTable.createRow({
+const { cols, row } = UsersTable.createRow({
     name: "Alice",
     email: "alice@example.com",
 });
 
 await db.query(
-    sql.void`INSERT INTO ${UsersTable} (${sql.join(cols, sql.fragment`, `)}) SELECT * FROM ${sql.unnest([row], types)}`
+    sql.void`INSERT INTO ${UsersTable} ${sql.tuple(cols)} VALUES ${sql.tuple(row)}`
 );
 ```
 
-`createRow` returns the column identifiers (`cols`), values (`row`), and PostgreSQL type names (`types`) ready for `sql.unnest`.
+`createRow` returns the column identifiers (`cols`) and values (`row`). Pass them to `sql.tuple` to build the column list and the value row.
 
 ### Partial row
 
 `createPartialRow` omits keys that are `undefined`, allowing you to insert only the fields you have:
 
 ```ts
-const { cols, row, types } = UsersTable.createPartialRow({ name: "Bob" });
+const { cols, row } = UsersTable.createPartialRow({ name: "Bob" });
 ```
 
 ### Bulk insert
@@ -162,14 +162,14 @@ const records = [
     { name: "Bob",   email: "bob@example.com" },
 ];
 
-const { cols, rows, types } = UsersTable.createRows(records);
+const { cols, rows } = UsersTable.createRows(records);
 
 await db.query(
-    sql.void`INSERT INTO ${UsersTable} (${sql.join(cols, sql.fragment`, `)}) SELECT * FROM ${sql.unnest(rows, types)}`
+    sql.void`INSERT INTO ${UsersTable} ${sql.tuple(cols)} VALUES ${sql.tuples(rows)}`
 );
 ```
 
-`createRows` / `createPartialRows` accept an array and produce a batch-ready `rows` matrix.
+`createRows` / `createPartialRows` accept an array and produce a batch-ready `rows` matrix. `sql.tuples` throws if `rows` is empty — guard with an early return when needed.
 
 ---
 
@@ -178,12 +178,12 @@ await db.query(
 `sql.excluded` generates the `SET col = EXCLUDED.col` pairs for `ON CONFLICT DO UPDATE`:
 
 ```ts
-const { cols, rows, types } = UsersTable.createRows([userData]);
+const { cols, rows } = UsersTable.createRows([userData]);
 
 await db.query(
     sql.void`
-        INSERT INTO ${UsersTable} (${sql.join(cols, sql.fragment`, `)})
-        SELECT * FROM ${sql.unnest(rows, types)}
+        INSERT INTO ${UsersTable} ${sql.tuple(cols)}
+        VALUES ${sql.tuples(rows)}
         ON CONFLICT (${UsersTable.email}) DO UPDATE
         SET ${sql.excluded(cols, [UsersTable.id])}
     `

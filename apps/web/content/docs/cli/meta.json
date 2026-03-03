@@ -1,0 +1,4 @@
+{
+  "title": "CLI",
+  "pages": ["new", "generate", "migrate", "rollback", "sandbox", "populate"]
+}

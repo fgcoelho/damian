@@ -1,0 +1,285 @@
+---
+title: Usage
+description: Learn how to use Damian with practical examples.
+---
+
+## Client setup
+
+```ts title="db.ts"
+import { createDb, createSQL } from '@damiandb/pg';
+
+export const db = await createDb({
+    connectionString: process.env.DATABASE_URL as string,
+});
+
+export const sql = createSQL();
+```
+
+`createDb` returns a `Promise<DatabasePool>` — always await it. `createSQL` is synchronous and returns the `sql` tagged-template helper.
+
+---
+
+## SELECT
+
+### By column value
+
+Pass the table as the first argument to `sql(...)` to get rows typed to that table's shape:
+
+```ts
+import { db, sql } from './db';
+import { UsersTable } from 'tables';
+
+const { rows } = await db.query(
+    sql(UsersTable)`SELECT * FROM ${UsersTable} WHERE ${UsersTable.email} = ${"alice@example.com"}`
+);
+
+const user = rows[0]; // typed as { id: number, name: string, email: string, ... }
+```
+
+### Untyped queries
+
+Use `sql` (no argument) to produce a query without a row schema. Rows come back as `any`:
+
+```ts
+const result = await db.query(sql`SELECT 1 AS n`);
+```
+
+### Void queries (no result expected)
+
+Use `sql.void` for DDL, `INSERT`, `UPDATE`, `DELETE`, and any query where you don't need the result:
+
+```ts
+await db.query(sql.void`UPDATE ${UsersTable} SET name = ${"Alice"} WHERE ${UsersTable.id} = ${1}`);
+```
+
+### WHERE IN
+
+`sql.inArray` generates a safe `IN (...)` fragment. When the values array is empty it emits `FALSE` instead of invalid SQL:
+
+```ts
+const { rows } = await db.query(
+    sql(UsersTable)`SELECT * FROM ${UsersTable} WHERE ${sql.inArray(UsersTable.id, [1, 2, 3])}`
+);
+```
+
+---
+
+## Relational queries
+
+To type a query that joins multiple tables, define a row schema using the table's `.schema` property and combine the results yourself:
+
+```ts
+import { db, sql } from './db';
+import { UsersTable, PostsTable } from 'tables';
+
+const { rows } = await db.query(
+    sql(UsersTable.schema)`
+        SELECT
+            ${sql.output(UsersTable).json()},
+            ${sql.output(PostsTable).json().array()}
+        FROM ${UsersTable}
+        INNER JOIN ${PostsTable} ON ${UsersTable.id} = ${PostsTable.user_id}
+        GROUP BY ${UsersTable.id}
+    `
+);
+```
+
+In practice, define a `s.object(...)` schema once and reuse it. See the [Custom Typings](/docs/fundamentals/custom-typings) page for advanced column-level overrides.
+
+### `sql.output` — chainable select fragments
+
+`sql.output(table)` produces a SQL fragment for `SELECT`. It is chainable:
+
+| Method | SQL produced |
+|---|---|
+| `sql.output(T)` | `"t".*` |
+| `sql.output(T).alias("x")` | `"t".* AS "x"` |
+| `sql.output(T).json()` | `row_to_json("t".*) AS "t"` |
+| `sql.output(T).json().array()` | `array_agg(row_to_json("t".*)) AS "t"` |
+| `sql.output(T).exclude(T.col)` | selects all columns except `col` |
+
+`sql.output` also accepts a column identifier (from `sql.identifier([...])`) when you need to select a single column with a computed alias.
+
+---
+
+## Table aliases
+
+Use `sql.alias(table, alias)` to create an aliased copy of a table. This is required when joining a table to itself:
+
+```ts
+import { db, sql } from './db';
+import { PersonTable } from 'tables';
+
+const employee = sql.alias(PersonTable, "employee");
+const manager  = sql.alias(PersonTable, "manager");
+
+const { rows } = await db.query(
+    sql(PersonTable)`
+        SELECT ${employee.name} AS employee_name, ${manager.name} AS manager_name
+        FROM ${employee}
+        INNER JOIN ${manager} ON ${employee.manager_id} = ${manager.id}
+    `
+);
+```
+
+The alias must differ from the original table name — Damian throws at runtime if they match.
+
+---
+
+## INSERT
+
+### Single row
+
+```ts
+import { db, sql } from './db';
+import { UsersTable } from 'tables';
+
+const { cols, row, types } = UsersTable.createRow({
+    name: "Alice",
+    email: "alice@example.com",
+});
+
+await db.query(
+    sql.void`INSERT INTO ${UsersTable} (${sql.join(cols, sql.fragment`, `)}) SELECT * FROM ${sql.unnest([row], types)}`
+);
+```
+
+`createRow` returns the column identifiers (`cols`), values (`row`), and PostgreSQL type names (`types`) ready for `sql.unnest`.
+
+### Partial row
+
+`createPartialRow` omits keys that are `undefined`, allowing you to insert only the fields you have:
+
+```ts
+const { cols, row, types } = UsersTable.createPartialRow({ name: "Bob" });
+```
+
+### Bulk insert
+
+```ts
+const records = [
+    { name: "Alice", email: "alice@example.com" },
+    { name: "Bob",   email: "bob@example.com" },
+];
+
+const { cols, rows, types } = UsersTable.createRows(records);
+
+await db.query(
+    sql.void`INSERT INTO ${UsersTable} (${sql.join(cols, sql.fragment`, `)}) SELECT * FROM ${sql.unnest(rows, types)}`
+);
+```
+
+`createRows` / `createPartialRows` accept an array and produce a batch-ready `rows` matrix.
+
+---
+
+## Upsert
+
+`sql.excluded` generates the `SET col = EXCLUDED.col` pairs for `ON CONFLICT DO UPDATE`:
+
+```ts
+const { cols, rows, types } = UsersTable.createRows([userData]);
+
+await db.query(
+    sql.void`
+        INSERT INTO ${UsersTable} (${sql.join(cols, sql.fragment`, `)})
+        SELECT * FROM ${sql.unnest(rows, types)}
+        ON CONFLICT (${UsersTable.email}) DO UPDATE
+        SET ${sql.excluded(cols, [UsersTable.id])}
+    `
+);
+```
+
+The second argument to `sql.excluded` is an optional list of columns to **ignore** (not update on conflict).
+
+---
+
+## UPDATE
+
+```ts
+await db.query(
+    sql.void`UPDATE ${UsersTable} SET name = ${"Alice Renamed"} WHERE ${UsersTable.email} = ${"alice@example.com"}`
+);
+```
+
+---
+
+## DELETE
+
+### Basic delete
+
+```ts
+await db.query(
+    sql.void`DELETE FROM ${UsersTable} WHERE ${UsersTable.id} = ${userId}`
+);
+```
+
+### Delete with RETURNING
+
+Pass the table to `sql(...)` to type the returned rows:
+
+```ts
+const { rows } = await db.query(
+    sql(PostsTable)`DELETE FROM ${PostsTable} WHERE ${PostsTable.title} = ${"Old Post"} RETURNING *`
+);
+
+// rows is typed as PostsTable's row shape
+```
+
+---
+
+## Transactions
+
+```ts
+await db.transaction(async (tx) => {
+    await tx.query(sql.void`INSERT INTO ${UsersTable} ...`);
+    await tx.query(sql.void`INSERT INTO ${PostsTable} ...`);
+    // throws → rolled back automatically
+});
+```
+
+---
+
+## Utility helpers
+
+### `sql.comma` — join values with a comma
+
+```ts
+// Both overloads are equivalent
+sql.comma(a, b, c)
+sql.comma([a, b, c])
+```
+
+`undefined` values are filtered out silently.
+
+### `sql.tuple` / `sql.tuples` — parenthesized value groups
+
+```ts
+sql.tuple(1, 2, 3)          // → (1, 2, 3)
+sql.tuples([[1, 2], [3, 4]]) // → (1, 2), (3, 4)
+```
+
+### `sql.target` / `sql.targets` — strip table prefix from identifiers
+
+Useful when you need unqualified column names (e.g. in `ON CONFLICT` or `RETURNING`):
+
+```ts
+sql.target(UsersTable.email)           // → "email"
+sql.targets(UsersTable.id, UsersTable.name) // → ["id", "name"]
+// also accepts array overload:
+sql.targets([UsersTable.id, UsersTable.name])
+```
+
+### `sql.identity` — boolean identity for dynamic WHERE
+
+A safe default when building conditional clauses:
+
+```ts
+const filter = shouldFilter
+    ? sql.fragment`${UsersTable.name} = ${"Alice"}`
+    : sql.identity("and"); // → TRUE (no-op in AND chain)
+
+await db.query(sql(UsersTable)`SELECT * FROM ${UsersTable} WHERE ${filter}`);
+```
+
+Use `"or"` to get `FALSE` (no-op in OR chains).

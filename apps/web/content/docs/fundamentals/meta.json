@@ -1,0 +1,4 @@
+{
+  "pages": ["quickstart", "workflow", "usage", "custom-typings"],
+  "defaultOpen": true
+}

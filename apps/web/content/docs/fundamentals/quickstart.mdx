@@ -1,0 +1,151 @@
+---
+title: Quickstart
+description: Get started with Damian in minutes.
+---
+
+import { File, Folder, Files } from "fumadocs-ui/components/files";
+
+### Installation
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+
+```bash tab="npm"
+npm install --save-dev damian && npm install @damiandb/pg
+```
+
+```bash tab="pnpm"
+pnpm add -D damian && pnpm add @damiandb/pg
+```
+
+```bash tab="yarn"
+yarn add -D damian && yarn add @damiandb/pg
+```
+
+</Tabs>
+
+You also need [dbmate](https://github.com/amacneil/dbmate) installed and available on your `PATH`. Damian delegates migration execution to it.
+
+### Configuration file
+
+```ts title="damian.config.ts"
+import { config } from "damian";
+
+export default config({
+    driver: "postgres",          // required — only "postgres" is supported
+    root: "./damian",            // optional, defaults to "./damian"
+    env: ".env",                 // optional, defaults to ".env"
+    url: process.env.DATABASE_URL, // optional, defaults to process.env.DATABASE_URL
+});
+```
+
+### Migrations
+
+Run `damian new` to create your first migration:
+
+```bash
+npx damian new
+```
+
+You can also pass the name directly:
+
+```bash
+npx damian new create_users_table
+```
+
+This creates a new file under `./damian/.migrations/`. Edit it to define your table:
+
+```sql title="./damian/.migrations/20240101000000_create_users_table.sql"
+-- migrate:up
+CREATE TABLE users (
+    id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+-- migrate:down
+DROP TABLE users;
+```
+
+Apply the migration to your database:
+
+```bash
+npx damian migrate
+```
+
+### Generate
+
+After writing your migration files, run:
+
+```bash
+npx damian generate
+```
+
+This reads all migrations, applies them to an in-memory database, and generates:
+
+- `./damian/.generated/tables.ts` — typed table definitions for use in queries
+- `./damian/.generated/typings.ts` — a shadow type used for custom column overrides
+- `./damian/db.sql` — a clean SQL dump of the current schema (useful for review)
+
+### Path Alias
+
+Set up an import alias so you can reference the generated tables from anywhere:
+
+<Tabs groupId='languages' persist items={['typescript', 'javascript']}>
+
+```json tab="typescript" title="tsconfig.json"
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "tables": ["./damian/.generated/tables.ts"]
+    }
+  }
+}
+```
+
+```json tab="javascript" title="package.json"
+{
+  "imports": {
+    "#tables": "./damian/.generated/tables.js"
+  }
+}
+```
+
+</Tabs>
+
+### Database client
+
+Create your database client once and export it:
+
+```ts title="db.ts"
+import { createDb, createSQL } from '@damiandb/pg';
+
+export const db = await createDb({
+    connectionString: process.env.DATABASE_URL as string,
+});
+
+export const sql = createSQL();
+```
+
+### Query your database
+
+```ts title="index.ts"
+import { db, sql } from './db';
+import { UsersTable } from 'tables';
+
+const { rows } = await db.query(
+    sql(UsersTable)`SELECT * FROM ${UsersTable} WHERE ${UsersTable.name} = ${"Alice"}`
+);
+
+// rows is fully typed based on your schema
+const user = rows[0];
+```
+
+### Edit your `.gitignore`
+
+The generated files are derived from your migrations and should not be committed:
+
+```txt title=".gitignore"
+./damian/.generated
+```

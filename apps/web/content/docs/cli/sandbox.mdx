@@ -1,0 +1,39 @@
+---
+title: 'sandbox'
+description: 'npx damian sandbox'
+---
+
+## What it does
+
+Completely resets your development database, runs all migrations from scratch, regenerates types, and runs populators in this order:
+
+1. Drop and recreate the database
+2. Apply all migrations
+3. Run `damian generate`
+4. Run **all** `core` populators automatically (no prompt)
+5. Prompt you to choose a single `sandbox` populator to run
+
+This gives you a clean, deterministic state for local development.
+
+## Command
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npx damian sandbox
+```
+```bash tab="pnpm"
+pnpm damian sandbox
+```
+```bash tab="yarn"
+yarn damian sandbox
+```
+</Tabs>
+
+## Populator groups
+
+`sandbox` depends on the same `core` / `sandbox` populator conventions used by the [`populate`](/docs/cli/populate) command.
+
+- **`core`** populators (`./damian/populators/core/*.populator.ts`) are always run first, automatically, with no prompt. They typically seed reference data that every scenario needs.
+- **`sandbox`** populators (`./damian/populators/sandbox/*.populator.ts`) represent different development scenarios. The command asks you to pick exactly one.
+
+See the [populate](/docs/cli/populate) page for details on writing populators.

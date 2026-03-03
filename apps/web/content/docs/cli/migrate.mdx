@@ -1,0 +1,24 @@
+---
+title: 'migrate'
+description: 'npx damian migrate'
+---
+
+## What it does
+
+Runs all pending migrations against your database using [dbmate](https://github.com/amacneil/dbmate) under the hood.
+
+Migration files live in `./damian/.migrations/`. Only `.sql` files not yet recorded in the migrations table are applied.
+
+## Command
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npx damian migrate
+```
+```bash tab="pnpm"
+pnpm damian migrate
+```
+```bash tab="yarn"
+yarn damian migrate
+```
+</Tabs>

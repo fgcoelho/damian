@@ -1,0 +1,116 @@
+---
+title: Workflow
+description: From development to production with Damian.
+---
+
+## The Damian workflow
+
+Damian uses [dbmate](https://github.com/amacneil/dbmate) for executing migrations. The workflow has four repeating steps:
+
+1. Write a migration in SQL
+2. Generate TypeScript types from your migrations
+3. Run the migration against the database
+4. Write queries
+
+The command you use to run migrations locally is the same command you use in production. There is no separate dev workflow.
+
+---
+
+### 1. Create a new migration
+
+```bash
+npx damian new
+```
+
+This prompts you for a name and creates a new file under `./damian/.migrations/`. You can also pass the name directly:
+
+```bash
+npx damian new add_posts_table
+```
+
+The file has the following structure:
+
+```sql title="./damian/.migrations/20240101000000_add_posts_table.sql"
+-- migrate:up
+
+
+-- migrate:down
+
+```
+
+Edit the `migrate:up` block with your SQL. The `migrate:down` block is used by `damian rollback`.
+
+---
+
+### 2. Generate types
+
+```bash
+npx damian generate
+```
+
+This reads your migration files, applies them to an in-memory database (via PGlite), and produces:
+
+- `./damian/.generated/tables.ts` — typed table definitions, imported in your queries
+- `./damian/.generated/typings.ts` — shadow type used for custom column overrides
+- `./damian/db.sql` — a clean SQL dump of the current schema (useful for review and diffs)
+
+Example of what gets generated for a `users` table:
+
+```ts title="./damian/.generated/tables.ts"
+// This file is auto-generated from the database schema. Do not edit directly.
+import { s, table } from '@damiandb/pg';
+
+enum Schema {
+    PUBLIC = "public"
+}
+
+export const UsersTable = table(Schema.PUBLIC, "users", {
+    id: s.number("integer"),
+    name: s.string("text"),
+    email: s.string("text"),
+    created_at: s.nullable(s.string("timestamp")),
+});
+```
+
+Non-`NOT NULL` columns are automatically wrapped in `s.nullable(...)`.
+
+---
+
+### 3. Apply the migration
+
+```bash
+npx damian migrate
+```
+
+This runs all pending migration files against your database in order.
+
+---
+
+### 4. Write queries
+
+Use the generated tables in your queries. See the [Usage](/docs/fundamentals/usage) page for examples.
+
+---
+
+## Deployment
+
+In your CI/CD pipeline, run `generate` before building so that the generated types are available at compile time, then apply the migrations to your production database:
+
+```bash
+npx damian generate
+npx damian migrate
+```
+
+Both commands are safe to run in production — `generate` never touches the database, and `migrate` only applies pending files.
+
+---
+
+## Rolling back
+
+To revert the last applied migration:
+
+```bash
+npx damian rollback
+```
+
+This executes the `-- migrate:down` block of the most recently applied migration.

@@ -1,0 +1,91 @@
+---
+title: 'populate'
+description: 'npx damian populate'
+---
+
+## What it does
+
+Runs one or more populator files against your database. Populators are TypeScript files that seed data — useful for local development, test setup, or resetting a database to a known state.
+
+## Command
+
+<Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+```bash tab="npm"
+npx damian populate
+npx damian populate --group core
+npx damian populate --group core --populator users
+```
+```bash tab="pnpm"
+pnpm damian populate
+pnpm damian populate --group core
+pnpm damian populate --group core --populator users
+```
+```bash tab="yarn"
+yarn damian populate
+yarn damian populate --group core
+yarn damian populate --group core --populator users
+```
+</Tabs>
+
+## Flags
+
+| Flag | Short | Description |
+|------|-------|-------------|
+| `--group` | `-g` | Run all populators in a specific group (skips the group prompt) |
+| `--populator` | `-p` | Run a single named populator within the group (requires `--group`) |
+
+When neither flag is provided, the command first asks you to select a group, then presents a multi-select checkbox of populators within that group.
+
+## File convention
+
+Populator files must be placed under `{root}/populators/{group}/` and named `*.populator.ts`.
+
+```
+damian/
+  populators/
+    core/
+      users.populator.ts
+      roles.populator.ts
+    sandbox/
+      empty-state.populator.ts
+      with-orders.populator.ts
+```
+
+Each file must export a default `populator()` instance:
+
+```ts title="damian/populators/core/users.populator.ts"
+import { populator } from 'damian'
+import { db } from '../../../src/db'
+
+export default populator({
+    populate: async () => {
+        await db.query(sql`INSERT INTO public.users (name) VALUES ('Alice'), ('Bob')`)
+    },
+})
+```
+
+## dependsOn
+
+Use `dependsOn` to declare execution order. The runner performs a topological sort so that dependencies always run before the populators that depend on them.
+
+```ts title="damian/populators/core/posts.populator.ts"
+import { populator } from 'damian'
+
+export default populator({
+    dependsOn: ['users'],  // 'users.populator.ts' runs first
+    populate: async () => {
+        // users are guaranteed to exist here
+    },
+})
+```
+
+`dependsOn` entries are matched by the base filename (without the `.populator.ts` suffix). All entries must refer to populators that are part of the same selected set — a missing dependency is a runtime error.
+
+## core vs sandbox groups
+
+The `core` and `sandbox` group names have special meaning in the [`sandbox`](/docs/cli/sandbox) command:
+
+- **`core`** populators run automatically, without prompting, before any sandbox populator.
+- **`sandbox`** populators represent different development scenarios; the `sandbox` command asks you to pick exactly one.
+
+The `populate` command itself treats all groups equally — `core` and `sandbox` are plain group names from its perspective.

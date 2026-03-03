@@ -96,16 +96,16 @@ describe("getColumnType()", () => {
     });
   });
 
-  it('maps jsonb to s.any("jsonb")', () => {
+  it('maps jsonb to s.unknown("jsonb")', () => {
     expect(getColumnType("jsonb")).toEqual({
-      schema: 's.any("jsonb")',
+      schema: 's.unknown("jsonb")',
       db: "jsonb",
     });
   });
 
-  it('maps json to s.any("json")', () => {
+  it('maps json to s.unknown("json")', () => {
     expect(getColumnType("json")).toEqual({
-      schema: 's.any("json")',
+      schema: 's.unknown("json")',
       db: "json",
     });
   });
@@ -152,9 +152,9 @@ describe("getColumnType()", () => {
     });
   });
 
-  it('maps unknown type to s.any("unknown")', () => {
+  it('maps unknown type to s.unknown("unknown")', () => {
     expect(getColumnType("foobar_type")).toEqual({
-      schema: 's.any("unknown")',
+      schema: 's.unknown("unknown")',
       db: "unknown",
     });
   });
@@ -191,9 +191,9 @@ describe("getColumnType()", () => {
     });
   });
 
-  it('maps point geometry to s.any("geometry")', () => {
+  it('maps point geometry to s.unknown("geometry")', () => {
     expect(getColumnType("point")).toEqual({
-      schema: 's.any("geometry")',
+      schema: 's.unknown("geometry")',
       db: "geometry",
     });
   });

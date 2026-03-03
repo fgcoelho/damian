@@ -19,8 +19,8 @@ const TYPE_MAP: ColumnTypeEntry[] = [
     db: "varbit",
   },
   { prefixes: ["bit"], schema: 's.string("bit")', db: "bit" },
-  { prefixes: ["jsonb"], schema: 's.any("jsonb")', db: "jsonb" },
-  { prefixes: ["json"], schema: 's.any("json")', db: "json" },
+  { prefixes: ["jsonb"], schema: 's.unknown("jsonb")', db: "jsonb" },
+  { prefixes: ["json"], schema: 's.unknown("json")', db: "json" },
   { prefixes: ["xml"], schema: 's.string("xml")', db: "xml" },
   { prefixes: ["bigint", "int8"], schema: 's.number("bigint")', db: "bigint" },
   {
@@ -74,7 +74,7 @@ const TYPE_MAP: ColumnTypeEntry[] = [
   { prefixes: ["macaddr"], schema: 's.string("macaddr")', db: "macaddr" },
   {
     prefixes: ["point", "line", "lseg", "box", "path", "polygon", "circle"],
-    schema: 's.any("geometry")',
+    schema: 's.unknown("geometry")',
     db: "geometry",
   },
 ];
@@ -94,7 +94,7 @@ export function getColumnType(type: string): { schema: string; db: string } {
     }
   }
 
-  return { schema: 's.any("unknown")', db: "unknown" };
+  return { schema: 's.unknown("unknown")', db: "unknown" };
 }
 
 const TABLE_REGEX = /CREATE TABLE\s+([\w"]+)\.([\w"]+)\s*\(([\s\S]+?)\);/gi;

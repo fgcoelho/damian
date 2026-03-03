@@ -53,7 +53,7 @@ For each logical group, execute:
 
 ```bash
 git add [specific files for this group]
-git commit -m "type: user-facing impact description"
+git commit -m "type(scope): user-facing impact description"
 ```
 
 ## Commit Message Format
@@ -61,31 +61,49 @@ git commit -m "type: user-facing impact description"
 Each commit message must follow:
 
 ```
-type: short description (50 chars or less)
+type(scope): short description (50 chars or less)
 
 Detailed explanation of WHY the change was made.
 - List of what changed
 - Impact on the system
 ```
 
+### Monorepo Scopes
+
+This is a monorepo. Always include a scope that identifies where the change lives:
+
+| Scope       | When to use                                              |
+| ----------- | -------------------------------------------------------- |
+| `cli`       | Changes under `packages/cli/`                            |
+| `pg`        | Changes under `packages/pg/`                             |
+| `web`       | Changes under `apps/web/`                                |
+| `root`      | Root-level files: `package.json`, `pnpm-lock.yaml`, `turbo.json`, `.changeset/`, etc. |
+| `cli,pg`    | Changes that span multiple packages in a single commit   |
+
+When a commit touches only one package, use that package's scope. When it touches root config files alongside package files, use `root` or a combined scope.
+
 ## Examples
 
-**Good commit**:
+**Single package**:
 
 ```
-feat: add two-factor authentication
-
-Implements TOTP-based 2FA to improve account security.
-Users can enable 2FA in account settings.
+feat(pg): add Prettify<T> to normalize inferred row types
 ```
 
-**Good commit**:
+```
+fix(cli): resolve generate command hanging when worker has no executable code
+```
+
+**Root-level**:
 
 ```
-fix: resolve slow dashboard load time
+chore(root): update turbo pipeline and lockfile
+```
 
-Replaced N+1 queries with single aggregated query.
-Reduces page load from 3s to 200ms.
+**Cross-package**:
+
+```
+chore(cli,pg): version packages to 0.0.3
 ```
 
 ## Key Principles
@@ -106,10 +124,50 @@ Reduces page load from 3s to 200ms.
 - Include debug code, console logs, or temporary fixes
 - Commit without verifying the changes with `git diff --cached`
 
+## Step 4: Create Git Tags for Version Bumps
+
+After all commits are created, check whether any package versions were bumped in this session.
+
+Read the current versions:
+
+```bash
+node -p "require('./packages/cli/package.json').version"
+node -p "require('./packages/pg/package.json').version"
+```
+
+List existing tags to find the last tag per package:
+
+```bash
+git tag --sort=-v:refname | grep -E '^(damian|@damiandb/pg)@'
+```
+
+If a package version is **higher** than its most recent tag (or has no tag at all), create a tag:
+
+```bash
+git tag damian@<version>       # for packages/cli
+git tag @damiandb/pg@<version> # for packages/pg
+```
+
+Only tag packages whose version actually increased. Do not re-tag an existing version.
+
+Then push the tags to the remote:
+
+```bash
+git push origin <tag1> <tag2>
+```
+
+Verify:
+
+```bash
+git tag --sort=-v:refname | head -10
+git ls-remote --tags origin
+```
+
 ## Return Value
 
-After completing, return a summary of commits created:
+After completing, return a summary of:
 
 - List of commit messages
 - Files affected by each commit
+- Any git tags created
 - Any warnings about mixed concerns

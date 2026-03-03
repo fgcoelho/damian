@@ -1,5 +1,11 @@
 # damian
 
+## 0.0.3
+
+### Patch Changes
+
+- Fix generated tables using the non-existent s.any() — now correctly emits s.unknown() for json, jsonb, geometry, and unrecognized column types.
+
 ## 0.0.2
 
 ### Patch Changes

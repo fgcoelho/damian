@@ -458,7 +458,7 @@ describe("sql.output().json() — real row_to_json query", () => {
           name: s.string("text"),
           email: s.string("text"),
         }),
-        posts: s.array(s.any("jsonb")),
+        posts: s.array(s.unknown("jsonb")),
       });
 
       const result = await tx.query(

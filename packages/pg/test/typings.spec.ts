@@ -1,5 +1,13 @@
-import { describe, expect, it } from "vitest";
-import { s, typingsFactory } from "../src/index.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { type Prettify, s, typingsFactory } from "../src/index.js";
+
+describe("Prettify<T>", () => {
+  it("flattens an intersection type into a plain object type", () => {
+    type Input = { a: string } & { b: number };
+    type Result = Prettify<Input>;
+    expectTypeOf<Result>().toEqualTypeOf<{ a: string; b: number }>();
+  });
+});
 
 describe("typingsFactory", () => {
   it("creates a factory that returns custom typings with autocompletion", () => {

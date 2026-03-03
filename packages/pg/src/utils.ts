@@ -3,6 +3,10 @@ import type { sql } from "slonik";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type AnyType = any;
 
+export type Prettify<T> = {
+  [K in keyof T]: T[K];
+} & {};
+
 export const SLONIK_FRAGMENT = Symbol.for("SLONIK_TOKEN_FRAGMENT") as AnyType;
 
 export const SLONIK_QUERY = Symbol.for("SLONIK_TOKEN_QUERY") as AnyType;
@@ -22,3 +26,11 @@ export const unsafeSQLFragment = (sqlString: string): SQLFragment => ({
   values: [],
   type: SLONIK_FRAGMENT,
 });
+
+export function filterBoolean<T>(arr: (T | null | undefined | false)[]): T[] {
+  return arr.filter(Boolean) as T[];
+}
+
+export function filterUndefined<T>(arr: (T | undefined)[]): T[] {
+  return arr.filter((v): v is T => v !== undefined);
+}

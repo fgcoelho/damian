@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
-import { s } from "../src/index.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { type SelectBuilder, s } from "../src/index.js";
 import { internalSQL as sql } from "../src/sql.js";
 import { table } from "../src/table.js";
 import { SLONIK_FRAGMENT } from "../src/utils.js";
@@ -153,6 +153,19 @@ describe("sql.output", () => {
   const items = table("public", "items", {
     id: s.string("text"),
     name: s.string("text"),
+  });
+
+  it("accepts a table with a concrete schema type without type errors", () => {
+    const concreteTable = table("public", "training_templates", {
+      id: s.string("text"),
+      routine_id: s.nullable(s.string("text")),
+      created_at: s.string("text"),
+      updated_at: s.string("text"),
+    });
+
+    expectTypeOf(sql.output).toBeCallableWith(concreteTable);
+    const frag = sql.output(concreteTable);
+    expectTypeOf(frag).toMatchTypeOf<SelectBuilder>();
   });
 
   it("produces wildcard select for a table", () => {

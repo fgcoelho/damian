@@ -1,3 +1,4 @@
+/** biome-ignore-all lint/style/noNonNullAssertion: ! */
 import type { DatabasePool } from "@damiandb/pg";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";

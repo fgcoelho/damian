@@ -28,7 +28,7 @@ export default class Migrate extends BaseCommand<typeof Migrate> {
         .split("\n")
         .map((l) => formatDbmateLine(l.trim()))
         .join("\n");
-      process.stdout.write(formatted + "\n");
+      process.stdout.write(`${formatted}\n`);
     } else {
       this.log(`${logSymbols.success} No pending migrations.`);
     }

@@ -103,7 +103,7 @@ async function run() {
   } satisfies PopulateWorkerMessage);
 
   for (const name of order) {
-    const instance = byName.get(name)!;
+    const instance = byName.get(name) as PopulatorInstance;
     parentPort?.postMessage({
       type: "start",
       name,

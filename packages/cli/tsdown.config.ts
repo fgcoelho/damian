@@ -1,33 +1,20 @@
-import { defineConfig, type UserConfig } from "tsdown";
+import { defineConfig, nodeLib } from "@damiandb/config/tsdown";
 
-const cli: UserConfig = {
+const cli = nodeLib({
   entry: ["src/index.ts"],
-  format: ["cjs"],
   dts: false,
-  shims: true,
-  clean: true,
-  platform: "node",
-  banner: {
-    js: "#!/usr/bin/env node",
-  },
-};
+  banner: { js: "#!/usr/bin/env node" },
+});
 
-const runtime: UserConfig = {
+const runtime = nodeLib({
   entry: ["src/runtime.ts"],
-  format: ["cjs"],
-  dts: true,
-  shims: true,
   clean: false,
-  platform: "node",
-};
+});
 
-const worker: UserConfig = {
+const worker = nodeLib({
   entry: ["src/workers/generate.ts", "src/workers/populate.ts"],
-  format: ["cjs"],
   dts: false,
-  shims: true,
   clean: false,
-  platform: "node",
-};
+});
 
 export default defineConfig([cli, runtime, worker]);

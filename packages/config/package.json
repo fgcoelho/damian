@@ -1,0 +1,18 @@
+{
+  "name": "@damiandb/config",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./tsconfig": "./ts/tsconfig.json",
+    "./vite": "./vite/index.ts",
+    "./vitest": "./vitest/index.ts",
+    "./tsdown": "./tsdown/index.ts"
+  },
+  "peerDependencies": {
+    "tsdown": "*",
+    "vite": "*",
+    "vite-tsconfig-paths": "*",
+    "vitest": "*"
+  }
+}

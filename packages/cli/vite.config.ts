@@ -1,15 +1,3 @@
-import path from "node:path";
-import { defineConfig } from "vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import { createViteConfig } from "@damiandb/config/vite";
 
-export default defineConfig({
-  plugins: [tsconfigPaths()],
-  build: {
-    sourcemap: true,
-  },
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "./src"),
-    },
-  },
-});
+export default createViteConfig(import.meta.dirname);

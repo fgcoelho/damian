@@ -80,6 +80,7 @@
     "vite-tsconfig-paths": "^6.1.1"
   },
   "devDependencies": {
+    "@damiandb/config": "workspace:*",
     "@biomejs/biome": "2.4.4",
     "@types/node": "25.3.3",
     "slonik-pglite-driver": "0.0.4",

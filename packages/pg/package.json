@@ -45,6 +45,7 @@
     "vite-tsconfig-paths": "^6.1.1"
   },
   "devDependencies": {
+    "@damiandb/config": "workspace:*",
     "@biomejs/biome": "2.4.4",
     "@electric-sql/pglite": "^0.3.15",
     "@types/node": "25.3.3",

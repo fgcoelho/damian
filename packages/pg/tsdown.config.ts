@@ -1,12 +1,3 @@
-import { defineConfig, type UserConfig } from "tsdown";
+import { defineConfig, nodeLib } from "@damiandb/config/tsdown";
 
-const config: UserConfig = {
-  entry: ["src/index.ts"],
-  format: ["cjs"],
-  dts: true,
-  shims: true,
-  clean: true,
-  platform: "node",
-};
-
-export default defineConfig(config);
+export default defineConfig(nodeLib({ entry: ["src/index.ts"] }));

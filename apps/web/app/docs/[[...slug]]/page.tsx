@@ -1,22 +1,22 @@
-import { source } from 'lib/source';
+import { Icon } from "components/icon";
+import { getMDXComponents } from "components/mdx-components";
+import { Callout } from "fumadocs-ui/components/callout";
+import { Tab, Tabs } from "fumadocs-ui/components/tabs";
+import { createRelativeLink } from "fumadocs-ui/mdx";
 import {
   DocsBody,
   DocsDescription,
   DocsPage,
   DocsTitle,
-} from 'fumadocs-ui/page';
-import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
-import { createRelativeLink } from 'fumadocs-ui/mdx';
-import { getMDXComponents } from 'components/mdx-components';
-import { Icon } from 'components/icon';
-import { V, X } from '@/components/vx';
-import { Tab, Tabs } from 'fumadocs-ui/components/tabs';
-import { Callout } from 'fumadocs-ui/components/callout';
+} from "fumadocs-ui/page";
+import { source } from "lib/source";
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { V, X } from "@/components/vx";
 
-export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
+export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
   const params = await props.params;
-  
+
   const page = source.getPage(params.slug);
 
   if (!page) notFound();
@@ -35,8 +35,8 @@ export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
             V,
             X,
             Tab,
-						Tabs,
-						Callout,
+            Tabs,
+            Callout,
           })}
         />
       </DocsBody>
@@ -49,11 +49,11 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata(
-  props: PageProps<'/docs/[[...slug]]'>,
+  props: PageProps<"/docs/[[...slug]]">,
 ): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
-  
+
   if (!page) notFound();
 
   return {

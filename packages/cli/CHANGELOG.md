@@ -1,5 +1,16 @@
 # damian
 
+## 0.0.5
+
+### Minor Changes
+
+- Improve type generation and typings imports in the CLI, and fix SQL tag typing and parser validation in the PostgreSQL driver.
+
+### Patch Changes
+
+- Updated dependencies
+  - @damiandb/pg@0.0.4
+
 ## 0.0.4
 
 ### Patch Changes

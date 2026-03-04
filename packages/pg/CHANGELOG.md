@@ -1,5 +1,11 @@
 # @damiandb/pg
 
+## 0.0.4
+
+### Patch Changes
+
+- Improve type generation and typings imports in the CLI, and fix SQL tag typing and parser validation in the PostgreSQL driver.
+
 ## 0.0.3
 
 ### Patch Changes

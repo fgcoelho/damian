@@ -66,7 +66,7 @@ export async function run(input: GenerateWorkerInput): Promise<void> {
     allMigrations,
   );
 
-  const customTypings = readTypings(typingsFile);
+  const customTypings = await readTypings(typingsFile);
   const tables = parseTables(fullSchema, customTypings);
 
   parentPort?.postMessage({

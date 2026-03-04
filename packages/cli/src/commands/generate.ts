@@ -17,7 +17,7 @@ import {
 } from "../core/migrations.js";
 import { formatFiles } from "../utils/prettier.js";
 
-export { capitalize } from "../core/generate/output.js";
+export { capitalize, generateTypingsOutput } from "../core/generate/output.js";
 export { getColumnType, parseTables } from "../core/generate/schema-parser.js";
 export { readTypings } from "../utils/typings-parser.js";
 

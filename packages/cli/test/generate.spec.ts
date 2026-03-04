@@ -4,6 +4,7 @@ import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   capitalize,
+  generateTypingsOutput,
   getColumnType,
   parseTables,
   readTypings,
@@ -287,6 +288,38 @@ CREATE TABLE "public"."posts" (
   });
 });
 
+describe("generateTypingsOutput()", () => {
+  it("preserves the original table name without camelCase conversion", () => {
+    const tables = [
+      {
+        schema: "public",
+        table: "billing_event",
+        columns: [
+          { name: "id", schemaType: 's.string("uuid")', sqlType: "uuid" },
+        ],
+      },
+    ];
+    const output = generateTypingsOutput(tables);
+    expect(output).toContain("billing_event:");
+    expect(output).not.toContain("billingEvent:");
+  });
+
+  it("preserves the original schema name without camelCase conversion", () => {
+    const tables = [
+      {
+        schema: "my_schema",
+        table: "users",
+        columns: [
+          { name: "id", schemaType: 's.string("uuid")', sqlType: "uuid" },
+        ],
+      },
+    ];
+    const output = generateTypingsOutput(tables);
+    expect(output).toContain("my_schema:");
+    expect(output).not.toContain("mySchema:");
+  });
+});
+
 describe("buildSchemaFromMigrations()", () => {
   it("returns SQL containing a CREATE TABLE for a simple migration", async () => {
     const migrationSql = [
@@ -325,82 +358,57 @@ describe("readTypings()", () => {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it("returns empty object when file does not exist", () => {
-    const result = readTypings(path.join(tmpDir, "typings.ts"));
+  it("returns empty object when file does not exist", async () => {
+    const result = await readTypings(path.join(tmpDir, "typings.ts"));
     expect(result).toEqual({});
   });
 
-  it("parses a simple typings export", () => {
+  it("returns empty object when file exports no default", async () => {
     const typingsFile = path.join(tmpDir, "typings.ts");
-    fs.writeFileSync(
-      typingsFile,
-      `export default {\n  "public.users.id": myType,\n  "public.posts.body": otherType\n};`,
-    );
-    const result = readTypings(typingsFile);
-    expect(result["public.users.id"]).toBe("myType");
-    expect(result["public.posts.body"]).toBe("otherType");
-  });
-
-  it("returns empty object when file has no matching export default", () => {
-    const typingsFile = path.join(tmpDir, "typings.ts");
-    fs.writeFileSync(typingsFile, "const x = 1;");
-    const result = readTypings(typingsFile);
+    fs.writeFileSync(typingsFile, "export const x = 1;");
+    const result = await readTypings(typingsFile);
     expect(result).toEqual({});
   });
 
-  it("parses new-format typings() call with nested schema.table.column keys", () => {
+  it("reads a single schema.table.column key from a real typings export", async () => {
     const typingsFile = path.join(tmpDir, "typings.ts");
     fs.writeFileSync(
       typingsFile,
       [
-        "import { typings } from '@damiandb/pg';",
-        "export default typings({",
+        "export default {",
         "  public: {",
         "    users: {",
-        "      role: z.type<UserRole>(),",
+        "      role: { '~standard': { version: 1, vendor: 'test', validate: () => ({ value: 'x' }) } },",
         "    },",
         "  },",
-        "});",
+        "};",
       ].join("\n"),
     );
-    const result = readTypings(typingsFile);
+    const result = await readTypings(typingsFile);
     expect(result["public.users.role"]).toBe("custom");
   });
 
-  it("parses all entries including those late in a large typings() call", () => {
+  it("reads all keys from a multi-schema export", async () => {
     const typingsFile = path.join(tmpDir, "typings.ts");
     fs.writeFileSync(
       typingsFile,
       [
-        "import { typings } from '@damiandb/pg';",
-        "export default typings({",
+        "export default {",
         "  billing: {",
         "    billingEvent: {",
-        "      kind: z.type<BillingKind>(),",
+        "      kind: { '~standard': { version: 1, vendor: 'test', validate: () => ({ value: 'x' }) } },",
         "    },",
         "  },",
         "  public: {",
         "    users: {",
-        "      role: z.type<UserRole>(),",
+        "      role: { '~standard': { version: 1, vendor: 'test', validate: () => ({ value: 'x' }) } },",
         "    },",
         "  },",
-        "  food: {",
-        "    food: {",
-        "      market: z.type<FoodMarket>(),",
-        "    },",
-        "  },",
-        "  search: {",
-        "    searchIndex: {",
-        "      kind: z.type<SearchKind>(),",
-        "    },",
-        "  },",
-        "});",
+        "};",
       ].join("\n"),
     );
-    const result = readTypings(typingsFile);
+    const result = await readTypings(typingsFile);
     expect(result["billing.billingEvent.kind"]).toBe("custom");
     expect(result["public.users.role"]).toBe("custom");
-    expect(result["food.food.market"]).toBe("custom");
-    expect(result["search.searchIndex.kind"]).toBe("custom");
   });
 });

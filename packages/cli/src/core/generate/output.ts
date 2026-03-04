@@ -12,9 +12,9 @@ export function generateTypingsOutput(tables: ParsedTable[]): string {
     ([schema, schemaTables]) => {
       const tableBlocks = schemaTables.map(
         (t) =>
-          `    ${Case.camel(t.table)}: {\n${t.columns.map((col) => `      ${col.name}: any;`).join("\n")}\n    };`,
+          `    ${t.table}: {\n${t.columns.map((col) => `      ${col.name}: any;`).join("\n")}\n    };`,
       );
-      return `  ${Case.camel(schema)}: {\n${tableBlocks.join("\n")}\n  };`;
+      return `  ${schema}: {\n${tableBlocks.join("\n")}\n  };`;
     },
   );
 
@@ -70,12 +70,11 @@ function buildTableBlock(
   customTypings: Record<string, string>,
 ): string {
   const tableCamel = Case.camel(t.table);
-  const schemaCamel = Case.camel(t.schema);
 
   const cols = t.columns.map((col) => {
     const key = `${t.schema}.${t.table}.${col.name}`;
     if (customTypings[key]) {
-      return `    ${col.name}: s.fromStandard(typings.${schemaCamel}.${tableCamel}.${col.name}, "${col.sqlType}"),`;
+      return `    ${col.name}: s.fromStandard(typings.${t.schema}.${t.table}.${col.name}, "${col.sqlType}"),`;
     }
     return `    ${col.name}: ${col.schemaType},`;
   });

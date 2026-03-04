@@ -1,30 +1,40 @@
 ---
-title: 'new'
-description: 'npx damian new'
+title: new
+description: Create a new migration file
 ---
 
 ## What it does
 
-Creates a new pending migration file in `./damian/.migrations/`. You can supply the migration name inline as an argument, or omit it to be prompted interactively.
+Creates a pending migration file in `./damian/.migrations/`. Supply the name inline or omit it for an interactive prompt.
 
-## Command
+---
+
+## Run
 
 <Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+
 ```bash tab="npm"
 npx damian new
 npx damian new my_migration_name
 ```
+
 ```bash tab="pnpm"
 pnpm damian new
 pnpm damian new my_migration_name
 ```
+
 ```bash tab="yarn"
 yarn damian new
 yarn damian new my_migration_name
 ```
+
 </Tabs>
 
-The generated file is named `{timestamp}_{slug}.sql` and contains the standard dbmate `migrate:up` / `migrate:down` stubs:
+---
+
+## Generated file
+
+File is named `{timestamp}_{slug}.sql` with standard dbmate stubs:
 
 ```sql
 -- migrate:up

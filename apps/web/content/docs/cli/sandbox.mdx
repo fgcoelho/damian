@@ -1,39 +1,47 @@
 ---
-title: 'sandbox'
-description: 'npx damian sandbox'
+title: sandbox
+description: Reset database and run a development scenario
 ---
 
 ## What it does
 
-Completely resets your development database, runs all migrations from scratch, regenerates types, and runs populators in this order:
+Resets your development database, runs all migrations, regenerates types, and populates data in this order:
 
 1. Drop and recreate the database
 2. Apply all migrations
 3. Run `damian generate`
-4. Run **all** `core` populators automatically (no prompt)
-5. Prompt you to choose a single `sandbox` populator to run
+4. Run all `core` populators (automatic, no prompt)
+5. Prompt you to choose a single `sandbox` populator
 
-This gives you a clean, deterministic state for local development.
+Gives you a clean, deterministic state for local development.
 
-## Command
+---
+
+## Run
 
 <Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+
 ```bash tab="npm"
 npx damian sandbox
 ```
+
 ```bash tab="pnpm"
 pnpm damian sandbox
 ```
+
 ```bash tab="yarn"
 yarn damian sandbox
 ```
+
 </Tabs>
+
+---
 
 ## Populator groups
 
-`sandbox` depends on the same `core` / `sandbox` populator conventions used by the [`populate`](/docs/cli/populate) command.
+Sandbox uses special meanings for populator groups:
 
-- **`core`** populators (`./damian/populators/core/*.populator.ts`) are always run first, automatically, with no prompt. They typically seed reference data that every scenario needs.
-- **`sandbox`** populators (`./damian/populators/sandbox/*.populator.ts`) represent different development scenarios. The command asks you to pick exactly one.
+- **`core`** - `./damian/populators/core/*.populator.ts` runs automatically before anything else. Typically seeds reference data all scenarios need.
+- **`sandbox`** - `./damian/populators/sandbox/*.populator.ts` represents different scenarios. You pick exactly one.
 
-See the [populate](/docs/cli/populate) page for details on writing populators.
+See the populate page for writing populators.

@@ -1,35 +1,43 @@
 ---
-title: 'generate'
-description: 'npx damian generate'
+title: generate
+description: Create TypeScript types from migrations
 ---
 
 ## What it does
 
-Reads all migration files from `./damian/.migrations/`, runs them against an in-memory database, and produces three output files:
+Reads all migration files, applies them to an in-memory database, produces:
 
 | Output | Purpose |
 |--------|---------|
-| `./damian/.generated/tables.ts` | TypeScript table definitions used by the query builder |
-| `./damian/.generated/typings.ts` | Re-exports custom typings from `./damian/typings.ts` (or an empty default) |
-| `./damian/db.sql` | A clean SQL dump of your current schema (for version control / review) |
+| `./damian/.generated/tables.ts` | TypeScript table definitions for queries |
+| `./damian/.generated/typings.ts` | Wraps custom typings from `./damian/typings.ts` |
+| `./damian/db.sql` | SQL dump of current schema (for version control) |
 
-## Command
+---
+
+## Run
 
 <Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+
 ```bash tab="npm"
 npx damian generate
 ```
+
 ```bash tab="pnpm"
 pnpm damian generate
 ```
+
 ```bash tab="yarn"
 yarn damian generate
 ```
+
 </Tabs>
 
-## devDumpIgnore
+---
 
-The `devDumpIgnore` option in `damian.config.ts` lets you exclude specific migration files from the `db.sql` dump while still including them in the `tables.ts` generation. This is useful for cleaning up the schema dump by omitting seed data or other non-structural migrations.
+## Skip migrations from dump
+
+Use `devDumpIgnore` in `damian.config.ts` to exclude specific files from `db.sql` while including them in type generation. Useful for cleaning up schema dumps by omitting seed data:
 
 ```ts title="damian.config.ts"
 import { config } from 'damian'
@@ -37,6 +45,6 @@ import { config } from 'damian'
 export default config({
     driver: 'postgres',
     url: process.env.DATABASE_URL,
-    devDumpIgnore: ['20240101000000_seed_dev_data.sql'],
+    devDumpIgnore: ['20240101000000_seed_dev_data.sql']
 })
 ```

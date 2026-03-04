@@ -1,36 +1,40 @@
 ---
 title: PostgreSQL
-description: 'postgresql driver'
+description: PostgreSQL driver configuration and usage
 ---
 
-## Driver
+## Setup
 
-`createDb` returns a `Promise<DatabasePool>`, so it must be awaited.
+`createDb` returns a `Promise<DatabasePool>`, always await it:
 
 ```ts
 import { createDb, createSQL } from '@damiandb/pg'
 
 export const db = await createDb({
-    connectionString: process.env.DATABASE_URL as string,
+    connectionString: process.env.DATABASE_URL as string
 })
 
 export const sql = createSQL()
 ```
 
-### Options
+---
+
+## Options
 
 | Option | Type | Description |
 |--------|------|-------------|
 | `connectionString` | `string` | PostgreSQL connection string (required) |
-| `driverFactory` | `DriverFactory` | Custom slonik driver factory (see below) |
-| `interceptors` | `readonly Interceptor[]` | Slonik interceptors (e.g. for logging, tracing) |
+| `driverFactory` | `DriverFactory` | Custom slonik driver factory |
+| `interceptors` | `readonly Interceptor[]` | Slonik interceptors (logging, tracing) |
 | `typeParsers` | `readonly DriverTypeParser[]` | Custom type parsers for PostgreSQL OIDs |
+
+---
 
 ## Custom driver
 
-Damian uses [slonik](https://github.com/gajus/slonik) under the hood, so you can pass any slonik-compatible `driverFactory`.
+Damian uses slonik under the hood, so any slonik-compatible `driverFactory` works.
 
-The example below uses [PGlite](https://github.com/electric-sql/pglite) — useful for in-process testing:
+Example with PGlite for in-process testing:
 
 ```ts
 import { createPGLiteDriverFactory } from 'slonik-pglite-driver'
@@ -41,6 +45,6 @@ const pglite = new PGlite()
 
 export const db = await createDb({
     connectionString: 'postgres://',
-    driverFactory: createPGLiteDriverFactory(pglite),
+    driverFactory: createPGLiteDriverFactory(pglite)
 })
 ```

@@ -1,22 +1,28 @@
 ---
-title: 'rollback'
-description: 'npx damian rollback'
+title: rollback
+description: Undo the last applied migration
 ---
 
 ## What it does
 
-Undo the last applied migration, reverting your database to the previous state.
+Reverts the most recent applied migration, returning your database to the previous state.
 
-## Command
+---
+
+## Run
 
 <Tabs groupId='package-manager' persist items={['npm', 'pnpm', 'yarn']}>
+
 ```bash tab="npm"
-npm damian rollback
+npx damian rollback
 ```
+
 ```bash tab="pnpm"
 pnpm damian rollback
 ```
+
 ```bash tab="yarn"
 yarn damian rollback
 ```
+
 </Tabs>

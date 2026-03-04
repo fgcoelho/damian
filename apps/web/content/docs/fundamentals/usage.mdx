@@ -15,8 +15,6 @@ export const db = await createDb({
 export const sql = createSQL()
 ```
 
-`createDb` returns a `Promise<DatabasePool>`, always await it. `createSQL` is synchronous.
-
 ---
 
 ## SELECT
@@ -27,9 +25,10 @@ export const sql = createSQL()
 import { db, sql } from './db'
 import { UsersTable } from 'tables'
 
-const { rows } = await db.query(
-    sql(UsersTable)`SELECT * FROM ${UsersTable} WHERE ${UsersTable.email} = ${"alice@example.com"}`
-)
+const { rows } = await db.query(sql(UsersTable)`
+    SELECT * FROM ${UsersTable} 
+    WHERE ${UsersTable.email} = ${"alice@example.com"}
+`)
 
 const user = rows[0]
 ```
@@ -44,22 +43,13 @@ const result = await db.query(sql`SELECT 1 AS n`)
 
 Rows come back as `any`.
 
-### Void (no result)
+### IN ARRAY
 
 ```ts
-await db.query(
-    sql.void`UPDATE ${UsersTable} SET name = ${"Alice"} WHERE ${UsersTable.id} = ${1}`
-)
-```
-
-Use `sql.void` for DDL, INSERT, UPDATE, DELETE.
-
-### WHERE IN
-
-```ts
-const { rows } = await db.query(
-    sql(UsersTable)`SELECT * FROM ${UsersTable} WHERE ${sql.inArray(UsersTable.id, [1, 2, 3])}`
-)
+const { rows } = await db.query(sql(UsersTable)`
+    SELECT * FROM ${UsersTable} 
+    WHERE ${sql.inArray(UsersTable.id, [1, 2, 3])}
+`)
 ```
 
 `sql.inArray` generates safe `IN (...)` fragments. Empty arrays emit `FALSE`.
@@ -80,13 +70,12 @@ const { rows } = await db.query(
             ${sql.output(UsersTable).json()},
             ${sql.output(PostsTable).json().array()}
         FROM ${UsersTable}
-        INNER JOIN ${PostsTable} ON ${UsersTable.id} = ${PostsTable.user_id}
+        INNER JOIN ${PostsTable} 
+            ON ${UsersTable.id} = ${PostsTable.user_id}
         GROUP BY ${UsersTable.id}
     `
 )
 ```
-
-Define a `s.object(...)` schema once and reuse it. See Custom typings for advanced overrides.
 
 ### sql.output
 
@@ -113,9 +102,12 @@ const manager = sql.alias(PersonTable, "manager")
 
 const { rows } = await db.query(
     sql(PersonTable)`
-        SELECT ${employee.name} AS employee_name, ${manager.name} AS manager_name
+        SELECT 
+            ${sql.output(employee).json()}, 
+            ${sql.output(manager).json()}
         FROM ${employee}
-        INNER JOIN ${manager} ON ${employee.manager_id} = ${manager.id}
+        INNER JOIN ${manager} 
+            ON ${employee.manager_id} = ${manager.id}
     `
 )
 ```
@@ -137,9 +129,10 @@ const { cols, row } = UsersTable.createRow({
     email: "alice@example.com"
 })
 
-await db.query(
-    sql.void`INSERT INTO ${UsersTable} ${sql.tuple(cols)} VALUES ${sql.tuple(row)}`
-)
+await db.query(sql.void`
+        INSERT INTO ${UsersTable} ${sql.tuple(cols)} 
+        VALUES ${sql.tuple(row)}
+`)
 ```
 
 `createRow` returns column identifiers and values. Pass to `sql.tuple`.
@@ -149,8 +142,6 @@ await db.query(
 ```ts
 const { cols, row } = UsersTable.createPartialRow({ name: "Bob" })
 ```
-
-`createPartialRow` omits undefined keys.
 
 ### Bulk
 
@@ -162,12 +153,11 @@ const records = [
 
 const { cols, rows } = UsersTable.createRows(records)
 
-await db.query(
-    sql.void`INSERT INTO ${UsersTable} ${sql.tuple(cols)} VALUES ${sql.tuples(rows)}`
-)
+await db.query(sql.void`
+    INSERT INTO ${UsersTable} ${sql.tuple(cols)} 
+    VALUES ${sql.tuples(rows)}
+`)
 ```
-
-`sql.tuples` throws on empty rows. Guard with early return.
 
 ---
 
@@ -186,15 +176,20 @@ await db.query(
 )
 ```
 
-`sql.excluded` generates `SET col = EXCLUDED.col` pairs. Second argument lists columns to ignore.
-
 ---
 
 ## UPDATE
 
 ```ts
-await db.query(
-    sql.void`UPDATE ${UsersTable} SET name = ${"Alice Renamed"} WHERE ${UsersTable.email} = ${"alice@example.com"}`
+const user = {
+    id: 1,
+    name: "Alice Renamed",
+}
+
+await db.query(sql.void`
+    UPDATE ${UsersTable} 
+    SET ${UsersTable.name} = ${user.name} 
+    WHERE ${UsersTable.id} = ${user.id}`
 )
 ```
 
@@ -205,20 +200,26 @@ await db.query(
 ### Basic
 
 ```ts
-await db.query(
-    sql.void`DELETE FROM ${UsersTable} WHERE ${UsersTable.id} = ${userId}`
-)
+await db.query(sql.void`
+    DELETE FROM ${UsersTable} 
+    WHERE ${UsersTable.id} = ${userId}
+`)
 ```
 
 ### With RETURNING
 
 ```ts
-const { rows } = await db.query(
-    sql(PostsTable)`DELETE FROM ${PostsTable} WHERE ${PostsTable.title} = ${"Old Post"} RETURNING *`
-)
-```
 
-Pass table to `sql(...)` to type returned rows.
+const post = {
+    title: "Post to delete"
+}
+
+const { rows } = await db.query(sql(PostsTable)`
+    DELETE FROM ${PostsTable} 
+    WHERE ${PostsTable.title} = ${post.title} 
+    RETURNING *
+`)
+```
 
 ---
 

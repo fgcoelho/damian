@@ -1,51 +1,49 @@
 ---
 title: Manifesto
-description: 'Understanding the philosophy behind Damian and why it takes a different approach to database tooling'
+description: SQL is the source of truth for your database
 icon: BookOpen
 ---
 
-## The schema ownership problem
+## Schema ownership
 
-Most database tooling in the JavaScript/TypeScript ecosystem is built around a specific model: you define your schema in TypeScript, and the tool generates SQL from it. The TypeScript definition is the source of truth. The SQL is a derived artifact.
+Most JavaScript/TypeScript database tools use a schema-first model: define your schema in TypeScript, generate SQL from it. TypeScript becomes the source of truth.
 
-This model has a practical consequence: every time you change your schema, you are asking the tool to compute a diff between two TypeScript representations and produce a correct SQL migration. That diff computation is non-trivial. It requires the tool to understand rename vs. drop-and-recreate, to handle constraint changes, to preserve data. The tools that do this well do it through significant engineering effort, and they still require manual intervention in edge cases.
+Every schema change requires computing a diff between two TypeScript representations and producing correct SQL. This diff computation is non-trivial. Tools handling it well require significant engineering, and still need manual intervention in edge cases. More fundamentally, you're delegating database decisions to tooling you don't control.
 
-The more fundamental issue is that you are delegating decisions about your database to a layer of tooling that you do not control and that evolves independently of SQL.
+---
 
-## The split between development and production
+## The dev/prod split
 
-Tools like Prisma explicitly document separate commands for development (`migrate dev`) and production (`migrate deploy`). They are not interchangeable. `migrate dev` uses a shadow database, detects schema drift, can prompt you to reset your local database, and generates migrations as a side effect of schema changes. `migrate deploy` only applies already-committed migration files and does none of that.
+Prisma and Drizzle split development and production workflows. Prisma has separate `migrate dev` (shadow database, auto-generates migrations) and `migrate deploy` (applies files only) commands. Drizzle's `push` command (bypasses files, applies diffs directly) is recommended for rapid prototyping but doesn't match production workflows.
 
-Drizzle's `push` command — which bypasses migration files entirely and applies schema diffs directly to the database — is explicitly recommended for "rapid prototyping" in development. It is a different workflow from the one you would use to deploy to production.
+The schema-first model requires this split because you need a development mechanism for schema evolution without running the full migration pipeline. This means what you do locally differs structurally from production. Generated migrations reflect TypeScript deltas, not actual intent, potentially dropping and recreating columns where renames were intended.
 
-This split exists because the schema-first model requires a development-time mechanism for evolving the schema without going through the full migration pipeline. That mechanism (`push`, `migrate dev`) is convenient, but it means that what you do in development is structurally different from what happens in production. The migration file is generated at the end of a development cycle, not at the beginning.
+---
 
-When migrations are generated from accumulated schema diffs, the generated SQL reflects the delta between two TypeScript snapshots. If you have been using `push` during development, the tool has no migration history to diff against — it has to reconstruct intent from state. The resulting migration may be correct. It may also drop and recreate columns where a rename was intended, or miss constraints that were added and removed during iteration.
+## SQL first
 
-## SQL as the source of truth
+Treat SQL migration files as the source of truth from the start. Same files, same order, same command in development and production.
 
-The alternative is to treat SQL migration files as the source of truth from the start — the same files you write in development are the ones that run in production, in the same order, via the same command.
+Write SQL, generate TypeScript types. Migrations are the first artifact. Types are derived.
 
-This inverts the direction: instead of writing TypeScript and generating SQL, you write SQL and generate TypeScript types.
+One workflow, not two. The first migration looks identical to the hundredth. SQL itself doesn't change. The spec is stable, implemented consistently, and readable for decades regardless of what tools replace Damian.
 
-The migration file is the first artifact. The TypeScript types are derived from it. There is one workflow, not two. There is no distinction between how you evolve a schema locally and how that schema reaches production. The first migration you write is structurally identical to the hundredth.
+---
 
-SQL itself does not change. The spec has been stable for decades, it is implemented consistently across database engines, and a migration file written today will be readable and executable without modification long after the tooling around it has been replaced.
+## Damian approach
 
-## What Damian does
+You write migration files in SQL. Damian replays them against an in-memory database and generates TypeScript types. Write queries in SQL using type-safe helpers that bind to derived types.
 
-Damian implements this model. You write migration files in SQL. From those files, Damian replays them against an in-memory database and generates TypeScript types. When you write a query, you write it in SQL — Damian provides type-safe helpers that bind the SQL you write to the types derived from your schema.
+No push command. No separate dev workflow. The same command runs migrations locally and in production.
 
-There is no push command. There is no separate dev workflow. The command you use to run migrations locally is the same command you use in production.
+For cases where inferred types aren't right, declare custom typings per column. The override is explicit, versioned with code, and survives regeneration.
 
-For the cases where the inferred TypeScript type is not the right one — a `jsonb` column with a known shape, a `text` column that should be a union — you can declare a custom typing per column. The generated code slots it in. The override is explicit, versioned with your code, and survives regeneration.
-
-The workflow:
+Workflow:
 
 1. Write a migration in SQL
 2. Run the migration
-3. Generate TypeScript types from your migrations
+3. Generate TypeScript types
 4. Write queries in SQL with type-safe helpers
-5. Seed your local database with populators; reset to a clean state at any time with a single command
+5. Seed with populators; reset to clean state anytime
 
-The types follow the schema. The schema is SQL. You are always in direct contact with what the database will actually do.
+Types follow schema. Schema is SQL. Always in direct contact with what the database does.

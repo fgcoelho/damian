@@ -1,34 +1,34 @@
 ---
 title: Workflow
-description: From development to production with Damian.
+description: Development and deployment steps
 ---
 
-## The Damian workflow
+## Four repeating steps
 
-Damian uses [dbmate](https://github.com/amacneil/dbmate) for executing migrations. The workflow has four repeating steps:
+Damian uses dbmate for executing migrations. The workflow repeats:
 
 1. Write a migration in SQL
-2. Generate TypeScript types from your migrations
-3. Run the migration against the database
+2. Generate TypeScript types
+3. Run the migration
 4. Write queries
 
-The command you use to run migrations locally is the same command you use in production. There is no separate dev workflow.
+The same command runs migrations locally and in production. No separate dev workflow.
 
 ---
 
-### 1. Create a new migration
+## Create migration
 
 ```bash
 npx damian new
 ```
 
-This prompts you for a name and creates a new file under `./damian/.migrations/`. You can also pass the name directly:
+Or pass a name:
 
 ```bash
 npx damian new add_posts_table
 ```
 
-The file has the following structure:
+Creates a file under `./damian/.migrations/` with this structure:
 
 ```sql title="./damian/.migrations/20240101000000_add_posts_table.sql"
 -- migrate:up
@@ -38,27 +38,26 @@ The file has the following structure:
 
 ```
 
-Edit the `migrate:up` block with your SQL. The `migrate:down` block is used by `damian rollback`.
+Edit `migrate:up` with your SQL. `migrate:down` is used by `damian rollback`.
 
 ---
 
-### 2. Generate types
+## Generate types
 
 ```bash
 npx damian generate
 ```
 
-This reads your migration files, applies them to an in-memory database (via PGlite), and produces:
+Reads migrations, applies them to an in-memory database, produces:
 
-- `./damian/.generated/tables.ts` — typed table definitions, imported in your queries
-- `./damian/.generated/typings.ts` — shadow type used for custom column overrides
-- `./damian/db.sql` — a clean SQL dump of the current schema (useful for review and diffs)
+- `./damian/.generated/tables.ts` - table definitions for queries
+- `./damian/.generated/typings.ts` - shadow type for custom column overrides
+- `./damian/db.sql` - SQL dump of current schema (for review and diffs)
 
-Example of what gets generated for a `users` table:
+Example generated table:
 
 ```ts title="./damian/.generated/tables.ts"
-// This file is auto-generated from the database schema. Do not edit directly.
-import { s, table } from '@damiandb/pg';
+import { s, table } from '@damiandb/pg'
 
 enum Schema {
     PUBLIC = "public"
@@ -68,49 +67,49 @@ export const UsersTable = table(Schema.PUBLIC, "users", {
     id: s.number("integer"),
     name: s.string("text"),
     email: s.string("text"),
-    created_at: s.nullable(s.string("timestamp")),
-});
+    created_at: s.nullable(s.string("timestamp"))
+})
 ```
 
-Non-`NOT NULL` columns are automatically wrapped in `s.nullable(...)`.
+Non-NOT NULL columns are automatically wrapped in `s.nullable(...)`.
 
 ---
 
-### 3. Apply the migration
+## Apply migration
 
 ```bash
 npx damian migrate
 ```
 
-This runs all pending migration files against your database in order.
+Runs all pending migration files against your database in order.
 
 ---
 
-### 4. Write queries
+## Write queries
 
-Use the generated tables in your queries. See the [Usage](/docs/fundamentals/usage) page for examples.
+Use generated tables in your queries. See the Usage page for examples.
 
 ---
 
 ## Deployment
 
-In your CI/CD pipeline, run `generate` before building so that the generated types are available at compile time, then apply the migrations to your production database:
+In CI/CD, run generate before build (generates types at compile time), then apply migrations:
 
 ```bash
 npx damian generate
 npx damian migrate
 ```
 
-Both commands are safe to run in production — `generate` never touches the database, and `migrate` only applies pending files.
+Both commands are production-safe. Generate never touches the database. Migrate only applies pending files.
 
 ---
 
-## Rolling back
+## Rollback
 
-To revert the last applied migration:
+Revert the last applied migration:
 
 ```bash
 npx damian rollback
 ```
 
-This executes the `-- migrate:down` block of the most recently applied migration.
+Executes the `-- migrate:down` block of the most recent migration.

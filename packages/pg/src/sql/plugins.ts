@@ -8,7 +8,7 @@ import {
   type ValueExpression,
 } from "slonik";
 import { DbError } from "../errors.js";
-import type { Table, TableShape } from "../table/index.js";
+import type { TableShape } from "../table/index.js";
 import {
   type AnyType,
   filterBoolean,
@@ -41,7 +41,7 @@ export type SqlTagPlugins = {
   comma: (
     ...args: [OptionalValueExpression[]] | OptionalValueExpression[]
   ) => ListSqlToken;
-  alias: <T extends Table<AnyType>>(table: T, aliasName: string) => T;
+  alias: <T extends TableShape>(table: T, aliasName: string) => T;
   jsonArray: (values: Record<PropertyKey, AnyType>[]) => FragmentSqlToken;
   output: (tableOrColumn: TableShape | IdentifierSqlToken) => SelectBuilder;
   excluded: (
@@ -71,7 +71,7 @@ export const sqlTagPlugins: SqlTagPlugins = {
     return sqlTag.join(filterUndefined(values), sqlTag.fragment`, `);
   },
 
-  alias<T extends Table<AnyType>>(table: T, aliasName: string): T {
+  alias<T extends TableShape>(table: T, aliasName: string): T {
     if (table.tableName === aliasName) {
       throw new DbError(
         "TABLE_ALIAS_SAME_AS_NAME",

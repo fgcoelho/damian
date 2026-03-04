@@ -45,6 +45,22 @@ describe("table()", () => {
     expect(users.schema["~standard"].version).toBe(1);
     expect(typeof users.schema["~standard"].validate).toBe("function");
   });
+
+  it("schema.cols exposes each column as a StandardSchemaV1-compatible field", () => {
+    expect(users.schema.cols.id["~standard"]).toBeDefined();
+    expect(users.schema.cols.name["~standard"]).toBeDefined();
+    expect(users.schema.cols.age["~standard"]).toBeDefined();
+  });
+
+  it("schema.cols column validates values matching the column type", () => {
+    const result = users.schema.cols.id["~standard"].validate("some-uuid");
+    expect((result as { value: unknown }).value).toBe("some-uuid");
+  });
+
+  it("schema.cols column rejects values not matching the column type", () => {
+    const result = users.schema.cols.id["~standard"].validate(42);
+    expect((result as { issues: unknown[] }).issues).toBeDefined();
+  });
 });
 
 describe("table.createRow()", () => {

@@ -20,6 +20,9 @@ type InferRowType<S extends Record<string, StandardSchemaV1>> = Prettify<{
   [K in keyof S]: StandardSchemaV1.InferOutput<S[K]>;
 }>;
 
+export type TableSchema<S extends Record<string, StandardSchemaV1>> =
+  StandardSchemaV1<InferRowType<S>> & { cols: S };
+
 export type RowsResult = {
   cols: SQLIdentifier[];
   rows: ValueExpression[][];
@@ -44,7 +47,7 @@ export type Table<S extends Record<string, StandardSchemaV1>> = {
 } & {
   tableName: string;
   tableSchema: string;
-  schema: StandardSchemaV1<InferRowType<S>>;
+  schema: TableSchema<S>;
   cols: Column<S[keyof S]>[];
   types: TypeNameIdentifier[];
 
@@ -76,7 +79,7 @@ export function table<S extends Record<string, StandardSchemaV1>>(
   shape: S,
 ): Table<S> {
   const colNames = Object.keys(shape);
-  const rowSchema = buildPassThroughRowSchema(shape);
+  const rowSchema = buildTableSchema(shape);
   const typeMap = buildTypeMap(shape, colNames);
   const types = colNames.map((col) => typeMap[col]);
 
@@ -115,10 +118,10 @@ export function table<S extends Record<string, StandardSchemaV1>>(
   return tableObj as unknown as Table<S>;
 }
 
-function buildPassThroughRowSchema<S extends Record<string, StandardSchemaV1>>(
-  _shape: S,
-): StandardSchemaV1<InferRowType<S>> {
-  return {
+function buildTableSchema<S extends Record<string, StandardSchemaV1>>(
+  shape: S,
+): TableSchema<S> {
+  const rowStandardSchema: StandardSchemaV1<InferRowType<S>> = {
     "~standard": {
       version: 1,
       vendor: "damiandb",
@@ -130,6 +133,8 @@ function buildPassThroughRowSchema<S extends Record<string, StandardSchemaV1>>(
       },
     },
   };
+
+  return Object.assign(rowStandardSchema, { cols: shape }) as TableSchema<S>;
 }
 
 function buildTypeMap<S extends Record<string, StandardSchemaV1>>(

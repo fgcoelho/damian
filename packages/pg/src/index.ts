@@ -23,7 +23,13 @@ export * as s from "./schema/index.js";
 export type { SelectBuilder, SQL, TaggedTemplateFn } from "./sql/index.js";
 export { buildSelect, createSQL, sql } from "./sql/index.js";
 
-export type { Column, RowResult, RowsResult, Table } from "./table/index.js";
+export type {
+  Column,
+  RowResult,
+  RowsResult,
+  Table,
+  TableSchema,
+} from "./table/index.js";
 export { table } from "./table/index.js";
 
 export type {

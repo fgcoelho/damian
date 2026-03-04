@@ -13,6 +13,13 @@ describe("sql tag — template literal", () => {
     expect(frag.values).toContain(val);
     expect(frag.type).toBe(SLONIK_FRAGMENT);
   });
+
+  it("is usable as a SqlFragmentToken inside sql.join", () => {
+    const a = sql`a = ${1}`;
+    const b = sql`b = ${2}`;
+    const joined = sql.join([a, b], sql` OR `);
+    expect(joined.members).toHaveLength(2);
+  });
 });
 
 describe("sql.identifier", () => {
@@ -47,6 +54,20 @@ describe("sql(schema)", () => {
   it("tagged query from schema has sql string", () => {
     const schema = s.object({ count: s.number("int4") });
     const query = sql(schema)`SELECT 1 AS count`;
+    expect(typeof query.sql).toBe("string");
+  });
+
+  it("returns a typed query factory when given a record of standard schemas", () => {
+    const userSchema = s.object({ id: s.string("uuid") });
+    const postSchema = s.object({ title: s.string("text") });
+    const factory = sql({ user: userSchema, post: postSchema });
+    expect(typeof factory).toBe("function");
+  });
+
+  it("tagged query from record of schemas has sql string", () => {
+    const userSchema = s.object({ id: s.string("uuid") });
+    const postSchema = s.object({ title: s.string("text") });
+    const query = sql({ user: userSchema, post: postSchema })`SELECT 1`;
     expect(typeof query.sql).toBe("string");
   });
 });
@@ -226,6 +247,12 @@ describe("sql — live query against PGlite", () => {
     const schema = s.object({ val: s.number("int4") });
     const result = await db.query(sql(schema)`SELECT 1::int AS val`);
     expect(result.rows[0].val).toBe(1);
+    await db.end();
+  });
+
+  it("executes an untyped template literal query via db.query", async () => {
+    const db = await createTestPool();
+    await db.query(sql`SELECT 1`);
     await db.end();
   });
 });

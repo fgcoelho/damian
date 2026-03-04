@@ -1,10 +1,17 @@
 import type { StandardSchemaV1 } from "@standard-schema/spec";
-import { createSqlTag, type QuerySqlToken, type ValueExpression } from "slonik";
+import {
+  createSqlTag,
+  type PrimitiveValueExpression,
+  type QuerySqlToken,
+  type ValueExpression,
+} from "slonik";
 import { DbError } from "../errors.js";
 import type { Table, TableShape } from "../table/index.js";
-import type { AnyType, Prettify } from "../utils.js";
+import type { AnyType, Prettify, SQLFragment, SQLQuery } from "../utils.js";
 import {
+  buildSchemaRecordParser,
   createSchemaParser,
+  isSchemaRecord,
   isStandardSchema,
   isTable,
   isTemplateArray,
@@ -22,6 +29,13 @@ export type TaggedTemplateFn<T extends StandardSchemaV1> = (
   ...values: ValueExpression[]
 ) => QuerySqlToken<T>;
 
+export type SqlTemplateToken = {
+  readonly parser: AnyType;
+  readonly sql: string;
+  readonly type: SQLQuery["type"] & SQLFragment["type"];
+  readonly values: readonly PrimitiveValueExpression[];
+};
+
 type CustomSQLTag = SqlTagPlugins & {
   [K in keyof typeof sqlTag]: (typeof sqlTag)[K];
 };
@@ -30,9 +44,12 @@ export type SQL = {
   (
     template: TemplateStringsArray,
     ...values: ValueExpression[]
-  ): QuerySqlToken<AnyType>;
+  ): SqlTemplateToken;
   <S extends Record<string, StandardSchemaV1>>(
     table: Table<S>,
+  ): TaggedTemplateFn<StandardSchemaV1<InferRowType<S>>>;
+  <S extends Record<string, StandardSchemaV1>>(
+    schemas: S,
   ): TaggedTemplateFn<StandardSchemaV1<InferRowType<S>>>;
   <S extends StandardSchemaV1>(schema: S): TaggedTemplateFn<S>;
 } & CustomSQLTag;
@@ -43,6 +60,10 @@ function castToken<T extends StandardSchemaV1>(
   return token as QuerySqlToken<T>;
 }
 
+function castTemplateToken(token: AnyType): SqlTemplateToken {
+  return token as SqlTemplateToken;
+}
+
 function buildTypedTag<S extends StandardSchemaV1>(schema: S) {
   return (template: TemplateStringsArray, ...vals: ValueExpression[]) =>
     castToken(
@@ -50,12 +71,26 @@ function buildTypedTag<S extends StandardSchemaV1>(schema: S) {
     );
 }
 
+function buildRecordTag<S extends Record<string, StandardSchemaV1>>(record: S) {
+  return (template: TemplateStringsArray, ...vals: ValueExpression[]) =>
+    castToken<StandardSchemaV1<InferRowType<S>>>(
+      sqlTag.type(buildSchemaRecordParser(record) as AnyType)(
+        template,
+        ...vals,
+      ),
+    );
+}
+
 function mainSql(
-  templateOrTableOrSchema: TemplateStringsArray | TableShape | StandardSchemaV1,
+  templateOrTableOrSchema:
+    | TemplateStringsArray
+    | TableShape
+    | StandardSchemaV1
+    | Record<string, StandardSchemaV1>,
   ...values: ValueExpression[]
 ): AnyType {
   if (isTemplateArray(templateOrTableOrSchema)) {
-    return castToken(
+    return castTemplateToken(
       sqlTag.fragment(
         templateOrTableOrSchema as TemplateStringsArray,
         ...values,
@@ -65,6 +100,12 @@ function mainSql(
 
   if (isTable(templateOrTableOrSchema)) {
     return buildTypedTag(templateOrTableOrSchema.schema);
+  }
+
+  if (isSchemaRecord(templateOrTableOrSchema)) {
+    return buildRecordTag(
+      templateOrTableOrSchema as Record<string, StandardSchemaV1>,
+    );
   }
 
   if (isStandardSchema(templateOrTableOrSchema)) {

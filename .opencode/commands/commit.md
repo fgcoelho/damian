@@ -62,10 +62,6 @@ Each commit message must follow:
 
 ```
 type(scope): short description (50 chars or less)
-
-Detailed explanation of WHY the change was made.
-- List of what changed
-- Impact on the system
 ```
 
 ### Monorepo Scopes

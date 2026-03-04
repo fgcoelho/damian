@@ -1,6 +1,6 @@
 ---
 name: version
-description: Create a changeset, bump versions, tag and release
+description: Write changelogs, bump versions, and create git tags
 callable: true
 subagent_type: "*"
 model: github-copilot/gpt-5-mini
@@ -8,7 +8,7 @@ model: github-copilot/gpt-5-mini
 
 # Version Command
 
-Analyze recent changes, create a changeset, bump versions, commit, tag, and prepare a release.
+Analyze recent changes, write changelogs, bump package versions, and create git tags. This command does NOT commit or push — the `/commit` command handles that.
 
 ## Execution Steps
 
@@ -22,6 +22,21 @@ git diff HEAD~1 --stat
 ```
 
 Identify which packages were touched: `packages/cli` and/or `packages/pg`. The `apps/web` package is ignored by changesets per `.changeset/config.json`.
+
+To determine the baseline, find the last version commit or tag for each package:
+
+```bash
+git tag --sort=-v:refname | grep -E '^(damian|@damiandb/pg)@' | head -5
+```
+
+Then inspect commits since that tag:
+
+```bash
+git log <tag>..HEAD --oneline -- packages/cli
+git log <tag>..HEAD --oneline -- packages/pg
+```
+
+Only packages with user-facing commits since their last tag need a changeset.
 
 ### Step 2: Determine bump type per package
 
@@ -77,14 +92,7 @@ pnpm bump
 
 This runs `changeset version`, which consumes the changeset files, updates `package.json` versions in affected packages, and updates `CHANGELOG.md` files. The `.changeset/*.md` files are deleted automatically.
 
-### Step 6: Commit the version bump
-
-```bash
-git add -A
-git commit -m "chore: version packages"
-```
-
-### Step 7: Create git tags
+### Step 6: Create git tags
 
 Read the new versions from the bumped `package.json` files:
 
@@ -93,7 +101,7 @@ node -p "require('./packages/cli/package.json').version"
 node -p "require('./packages/pg/package.json').version"
 ```
 
-Create a tag for each package that was bumped. Use the format `<package-name>@<version>`:
+Compare against the latest existing tags. Create a tag for each package whose version increased:
 
 - `damian@<version>` for `packages/cli`
 - `@damiandb/pg@<version>` for `packages/pg`
@@ -102,19 +110,18 @@ Create a tag for each package that was bumped. Use the format `<package-name>@<v
 git tag <package>@<version>
 ```
 
-Only tag packages whose version actually changed — compare against the previous version visible in `git log --oneline -5` or the prior tag.
+Do not re-tag an existing version. Only tag packages whose version actually changed.
 
-### Step 8: Verify
+### Step 7: Verify
 
 Run:
 
 ```bash
 pnpm changeset status
 git tag --sort=-v:refname | head -10
-git log --oneline -5
 ```
 
-Confirm no pending changesets remain, tags exist, and the version commit is in history.
+Confirm no pending changesets remain and tags exist locally.
 
 ## Key Rules
 
@@ -123,7 +130,9 @@ Confirm no pending changesets remain, tags exist, and the version commit is in h
 - Do not create a changeset for changes that only affect `apps/web`, tests, or internal tooling with no user-facing impact
 - One changeset per logical release unit — if two packages changed in one logical feature, one changeset file covering both is correct
 - Do not bump `major` unless something genuinely breaks existing usage
-- Do not push tags or commits to remote unless the user explicitly asks to release/publish
+- **Do not commit** — leave all changes (package.json, CHANGELOG.md) as unstaged modifications
+- **Do not push** — tags are local-only until `/commit` pushes them
+- After this command completes, the user should run `/commit` to commit the version bump and push tags
 
 ## Return Value
 
@@ -131,5 +140,5 @@ Return:
 
 - The changeset file path and its contents
 - New versions for each bumped package
-- Git tags created
-- Output of `git log --oneline -5`
+- Git tags created (local only)
+- Reminder to run `/commit` to commit and push

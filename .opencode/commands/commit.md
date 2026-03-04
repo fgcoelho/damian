@@ -6,191 +6,136 @@ subagent_type: "*"
 model: github-copilot/gpt-5-mini
 ---
 
-# Smart Commit Command
+# Commit Command
 
-Analyze pending changes and divide them into logical, atomic commits following conventional commits format. When version bumps are present, commit them separately and push their tags.
+Analyze pending changes, divide them into logical atomic commits, and push version tags when present.
 
-## How to Call This Command
+## Steps
 
-Subagents can invoke this command using the Task tool:
-
-```
-task(
-  description: "Create atomic commits for changes",
-  prompt: "/commit",
-  subagent_type: "developer"
-)
-```
-
-## Execution Steps
-
-### Step 1: Analyze Current State
-
-Run:
+### 1. Analyze
 
 ```bash
 git status --short
 git diff --stat
-```
-
-Understand what files changed and their size/impact.
-
-### Step 2: Detect Version Bump Files
-
-Check whether `/version` was run before this command by looking for modified version files:
-
-```bash
 git diff --name-only | grep -E '(CHANGELOG\.md|package\.json)' | grep -v pnpm-lock
 ```
 
-If changes include `packages/cli/CHANGELOG.md`, `packages/cli/package.json`, `packages/pg/CHANGELOG.md`, or `packages/pg/package.json`, these are version bump artifacts. They must be committed in a dedicated version commit (see Step 4).
+Separate version bump files (CHANGELOG.md, package.json from `packages/`) from everything else.
 
-Also check for local tags that have not been pushed:
+### 2. Commit non-version changes
 
-```bash
-git tag --sort=-v:refname | head -10
-git ls-remote --tags origin 2>/dev/null | awk '{print $2}' | sed 's|refs/tags/||'
-```
-
-### Step 3: Identify Logical Groups (Non-Version Changes)
-
-Categorize all remaining (non-version) changes by type:
-
-- **feat**: New user-facing functionality
-- **fix**: Bug fixes
-- **docs**: Documentation, README, comments
-- **refactor**: Internal changes without behavior change
-- **test**: Adding/modifying tests
-- **style**: Formatting, linting, code style (no logic change)
-- **chore**: Configuration, dependencies, CI/CD
-
-### Step 4: Commit Non-Version Changes First
-
-For each logical group of non-version changes, execute:
+Group remaining changes by logical concern. For each group:
 
 ```bash
-git add [specific files for this group]
-git commit -m "type(scope): user-facing impact description"
+git add <files>
+git diff --cached
+git commit -m "type(scope): subject line here"
 ```
 
-Do NOT include version bump files (CHANGELOG.md, package.json from packages/) in these commits.
+Types: `feat`, `fix`, `refactor`, `perf`, `test`, `docs`, `style`, `build`, `ci`, `chore`, `revert`.
 
-### Step 5: Commit Version Bump
-
-If version bump files were detected in Step 2, commit them as a single dedicated commit:
+### 3. Commit version bump (if present)
 
 ```bash
-git add packages/cli/package.json packages/cli/CHANGELOG.md
-git add packages/pg/package.json packages/pg/CHANGELOG.md
-git commit -m "chore(cli,pg): version packages"
+git add packages/*/package.json packages/*/CHANGELOG.md
+git commit -m "chore(scope): Version packages"
 ```
 
-Adjust the scope to match which packages were actually bumped. If only one package was bumped, use that package's scope:
+Scope matches bumped packages: `cli`, `pg`, or `cli,pg`.
 
-```
-chore(cli): version packages
-chore(pg): version packages
-chore(cli,pg): version packages
-```
-
-### Step 6: Push Tags
-
-After the version commit exists, push any unpushed tags that match the current package versions:
+### 4. Push tags (if present)
 
 ```bash
-node -p "require('./packages/cli/package.json').version"
-node -p "require('./packages/pg/package.json').version"
+git tag --sort=-v:refname | head -5
+git push origin <unpushed tags>
 ```
 
-```bash
-git push origin damian@<version> @damiandb/pg@<version>
-```
-
-Only push tags for packages whose version was bumped in this session.
-
-### Step 7: Verify
+### 5. Verify
 
 ```bash
 git status
-git tag --sort=-v:refname | head -10
 git log --oneline -5
 ```
 
-Confirm working tree is clean, tags exist, and commits are in history.
+## Commit Message Rules
 
-## Commit Message Format
-
-Each commit message must follow:
+Subject line format — **50 characters maximum, single line only**:
 
 ```
-type(scope): short description (50 chars or less)
+type(scope): message
 ```
 
-### Monorepo Scopes
+The subject must read naturally after "If applied, this commit will ...". Write "add feature", not "added feature" or "adding feature" or "adds feature".
 
-This is a monorepo. Always include a scope that identifies where the change lives:
+Before committing, check length:
 
-| Scope       | When to use                                              |
-| ----------- | -------------------------------------------------------- |
-| `cli`       | Changes under `packages/cli/`                            |
-| `pg`        | Changes under `packages/pg/`                             |
-| `web`       | Changes under `apps/web/`                                |
-| `root`      | Root-level files: `package.json`, `pnpm-lock.yaml`, `turbo.json`, `.changeset/`, etc. |
-| `cli,pg`    | Changes that span multiple packages in a single commit   |
+```bash
+SUBJECT="type(scope): message"
+if [ ${#SUBJECT} -gt 50 ]; then
+  echo "ERROR: Subject exceeds 50 chars (${#SUBJECT})"
+  exit 1
+fi
+git commit -m "$SUBJECT"
+```
 
-When a commit touches only one package, use that package's scope. When it touches root config files alongside package files, use `root` or a combined scope.
+Rules:
+
+- Single line only — no body, no wrapping
+- Maximum 50 characters total
+- Lowercase the message after the colon
+- No period at the end
+- One logical change per commit
+- Never mix version bumps with other changes
+- If unsure which type fits, the commit is too large — split it
+
+### Types
+
+| Type       | When to use                                                        |
+| ---------- | ------------------------------------------------------------------ |
+| `feat`     | New feature or user-facing addition                                |
+| `fix`      | Bug fix that corrects unexpected behaviour                         |
+| `refactor` | Code change with no logic or API surface impact                    |
+| `perf`     | Change that improves performance                                   |
+| `test`     | Adding or changing tests only                                      |
+| `docs`     | End user documentation only                                        |
+| `style`    | Formatting, whitespace, lint — no logic change                     |
+| `build`    | Build process or production dependency change (impacts the system) |
+| `chore`    | Dev tooling, config, or dev-dependency change (no system impact)   |
+| `ci`       | CI configuration files                                             |
+| `revert`   | Reverts a previous commit                                          |
+
+`build` vs `chore`: use `build` when the change affects what ships or how it compiles; use `chore` for anything that only affects the development environment.
+
+### Scopes
+
+Multiple scopes are separated with `,` (e.g. `cli,pg`). Separators `/` and `\` are also valid per the spec but `,` is preferred here.
+
+| Scope    | Path                 |
+| -------- | -------------------- |
+| `cli`    | `packages/cli/`      |
+| `pg`     | `packages/pg/`       |
+| `web`    | `apps/web/`          |
+| `root`   | Root config files    |
+| `cli,pg` | Multiple packages    |
 
 ## Examples
 
-**Single package**:
-
 ```
-feat(pg): add Prettify<T> to normalize inferred row types
+feat(pg): add prettify type helper
 ```
 
 ```
-fix(cli): resolve generate command hanging when worker has no executable code
+fix(cli): resolve hanging on empty worker
 ```
 
-**Root-level**:
-
 ```
-chore(root): update turbo pipeline and lockfile
+refactor(pg): replace nulls with result type
 ```
-
-**Version bump**:
 
 ```
 chore(cli,pg): version packages
 ```
 
-## Key Principles
-
-**DO:**
-
-- Keep commits atomic and focused on one logical change
-- Write clear, descriptive messages
-- Include WHY the change was made, not just WHAT
-- Stage files intentionally by group
-- Run `git status` after each commit to verify state
-- Commit version bump files separately from feature/fix changes
-- Push tags only after the version commit is created
-
-**DON'T:**
-
-- Mix version bump files with unrelated changes in one commit
-- Mix multiple unrelated changes in one commit
-- Write vague messages like "fix stuff" or "updates"
-- Stage all files without thinking about logical grouping
-- Include debug code, console logs, or temporary fixes
-- Commit without verifying the changes with `git diff --cached`
-- Create or modify git tags — that is the `/version` command's job
-
 ## Return Value
 
-After completing, return a summary of:
-
-- List of commit messages
-- Files affected by each commit
-- Any git tags pushed
-- Any warnings about mixed concerns
+Return nothing.

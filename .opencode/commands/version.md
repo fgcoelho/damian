@@ -136,9 +136,4 @@ Confirm no pending changesets remain and tags exist locally.
 
 ## Return Value
 
-Return:
-
-- The changeset file path and its contents
-- New versions for each bumped package
-- Git tags created (local only)
-- Reminder to run `/commit` to commit and push
+Return nothing.

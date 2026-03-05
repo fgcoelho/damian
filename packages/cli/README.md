@@ -4,22 +4,22 @@
 
 Visit https://damiandb.vercel.app to see the documentation.
 
-## NPM
+## Github
 
-Visit [https://npmjs.com/package/damian](https://www.npmjs.com/package/damian) to see the registry.
+Visit [https://github.com/fgcoelho/damian](https://github.com/fgcoelho/damian) to see the repository.
 
-## Download
+## Installation
 
 ```bash
-npm i --save-dev damian && npm i @damiandb/pg
+npm i --save-dev damian
 ```
 
 ```bash
-pnpm add -D damian && pnpm add @damiandb/pg
+pnpm add -D damian
 ```
 
 ```bash
-yarn add -D damian && yarn add @damiandb/pg
+yarn add -D damian
 ```
 
 ## License

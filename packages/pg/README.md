@@ -8,7 +8,7 @@ Visit https://damiandb.vercel.app to see the documentation.
 
 Visit [https://github.com/fgcoelho/damian](https://github.com/fgcoelho/damian) to see the repository.
 
-## Download
+## Installation
 
 ```bash
 npm i @damiandb/pg

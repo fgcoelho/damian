@@ -238,14 +238,24 @@ Throws automatically roll back.
 
 ## Helpers
 
-### sql.comma
+### sql.join
+
+Join fragments with any separator.
 
 ```ts
-sql.comma(a, b, c)
-sql.comma([a, b, c])
+sql.join(frags, sql`, `)
+sql.join.comma(frags)
+sql.join.and(conditions)
+sql.join.or(conditions)
 ```
 
-Undefined values filtered out silently.
+### sql.map
+
+Map an array into SQL fragments.
+
+```ts
+VALUES ${sql.join.comma(sql.map(rows, sql.tuple))}
+```
 
 ### sql.tuple / sql.tuples
 

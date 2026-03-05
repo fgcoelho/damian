@@ -1,6 +1,6 @@
 ---
 name: version
-description: Write changelogs, bump versions, and create git tags
+description: analyze changes, write changelog, bump versions, create tags
 callable: true
 subagent_type: "*"
 model: github-copilot/gpt-5-mini

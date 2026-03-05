@@ -11,13 +11,12 @@ export default function HomePage() {
         <h1>🪨 damian</h1>
 
         <p className="lead">
-          <strong>Migrate and query your database with ease.</strong>
+          <strong>Easy migrations and typesafe queries with raw SQL</strong>
         </p>
 
         <p>
-          No schema DSL. No diff engine. No "push" shortcut. Write SQL
-          migrations — Damian replays them to generate TypeScript types. One
-          workflow, from local to production.
+          No schema DSL. No diff engine. No "push" shortcut. One workflow, from
+          local to production.
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 not-prose my-8">
@@ -41,12 +40,10 @@ export default function HomePage() {
           <div className="border border-fd-border rounded-lg p-6">
             <h3 className="font-semibold mb-2 text-base inline-flex items-center">
               <Icon icon="CodeBracket" className="size-5 mr-2" />
-              SQL is the source of truth
+              SQL as source of truth
             </h3>
             <p className="text-fd-muted-foreground text-sm">
-              Write migrations in SQL. Damian replays them in-memory and derives
-              TypeScript types from the result. The schema lives in your
-              migration files, not in a TypeScript DSL.
+              Write SQL → get types. Not the other way around.
             </p>
           </div>
           <div className="border border-fd-border rounded-lg p-6">
@@ -55,147 +52,19 @@ export default function HomePage() {
               One workflow
             </h3>
             <p className="text-fd-muted-foreground text-sm">
-              The command that runs migrations locally is the same command you
-              run in production. No shadow database, no drift detection, no
-              generated migrations to second-guess.
+              No 'push', no 'migrate dev', only 'migrate'.
             </p>
           </div>
           <div className="border border-fd-border rounded-lg p-6">
             <h3 className="font-semibold mb-2 text-base inline-flex items-center">
               <Icon icon="Wrench" className="size-5 mr-2" />
-              Type-safe SQL
+              Query safety
             </h3>
             <p className="text-fd-muted-foreground text-sm">
-              Write real SQL with tagged template literals. Column references,
-              parameter bindings, and row shapes are all checked at compile time
-              against types that come directly from your schema.
+              Write queries with typesafe helpers and parameterization.
             </p>
           </div>
         </div>
-
-        <h2>Quick Example</h2>
-
-        <Tabs
-          groupId="operation"
-          persist
-          items={["SELECT", "INSERT", "UPDATE", "DELETE"]}
-        >
-          <Tab value="SELECT">
-            <DynamicCodeBlock
-              lang="ts"
-              code={`import { db, sql } from './db'
-import { UsersTable, PostsTable } from 'tables'
-
-// Simple typed query
-const { rows } = await db.query(
-    sql(UsersTable)\`SELECT * FROM \${UsersTable} WHERE \${UsersTable.email} = \${"alice@example.com"}\`
-)
-const user = rows[0] // { id: number, name: string, email: string, ... }
-
-// Relational query — join two tables, group results
-const { rows: results } = await db.query(
-    sql(UsersTable.schema)\`
-        SELECT
-            \${sql.output(UsersTable).json()},
-            \${sql.output(PostsTable).json().array()}
-        FROM \${UsersTable}
-        INNER JOIN \${PostsTable} ON \${UsersTable.id} = \${PostsTable.user_id}
-        GROUP BY \${UsersTable.id}
-    \`
-)
-
-// WHERE IN — emits FALSE safely when array is empty
-const { rows: filtered } = await db.query(
-    sql(UsersTable)\`SELECT * FROM \${UsersTable} WHERE \${sql.inArray(UsersTable.id, [1, 2, 3])}\`
-)`}
-            />
-          </Tab>
-          <Tab value="INSERT">
-            <DynamicCodeBlock
-              lang="ts"
-              code={`import { db, sql } from './db'
-import { UsersTable } from 'tables'
-
-// Single row
-const { cols, row } = UsersTable.createRow({
-    name: "Alice",
-    email: "alice@example.com",
-})
-
-await db.query(
-    sql.void\`INSERT INTO \${UsersTable} \${sql.tuple(cols)} VALUES \${sql.tuple(row)}\`
-)
-
-// Bulk insert
-const records = [
-    { name: "Alice", email: "alice@example.com" },
-    { name: "Bob",   email: "bob@example.com" },
-]
-
-const { cols: bulkCols, rows } = UsersTable.createRows(records)
-
-await db.query(
-    sql.void\`INSERT INTO \${UsersTable} \${sql.tuple(bulkCols)} VALUES \${sql.tuples(rows)}\`
-)
-
-// Upsert
-const { cols: uCols, rows: uRows } = UsersTable.createRows([{ name: "Alice", email: "alice@example.com" }])
-
-await db.query(
-    sql.void\`
-        INSERT INTO \${UsersTable} \${sql.tuple(uCols)}
-        VALUES \${sql.tuples(uRows)}
-        ON CONFLICT (\${UsersTable.email}) DO UPDATE
-        SET \${sql.excluded(uCols, [UsersTable.id])}
-    \`
-)`}
-            />
-          </Tab>
-          <Tab value="UPDATE">
-            <DynamicCodeBlock
-              lang="ts"
-              code={`import { db, sql } from './db'
-import { UsersTable } from 'tables'
-
-// Simple update
-await db.query(
-    sql.void\`UPDATE \${UsersTable} SET name = \${"Alice Renamed"} WHERE \${UsersTable.email} = \${"alice@example.com"}\`
-)
-
-// Dynamic WHERE using sql.identity
-const nameFilter = shouldFilter
-    ? sql.fragment\`\${UsersTable.name} = \${"Alice"}\`
-    : sql.identity("and") // → TRUE, safe no-op in AND chains
-
-await db.query(
-    sql(UsersTable)\`SELECT * FROM \${UsersTable} WHERE \${nameFilter}\`
-)`}
-            />
-          </Tab>
-          <Tab value="DELETE">
-            <DynamicCodeBlock
-              lang="ts"
-              code={`import { db, sql } from './db'
-import { PostsTable } from 'tables'
-
-// Fire-and-forget delete
-await db.query(
-    sql.void\`DELETE FROM \${PostsTable} WHERE \${PostsTable.id} = \${42}\`
-)
-
-// Delete with RETURNING — rows are fully typed
-const { rows } = await db.query(
-    sql(PostsTable)\`DELETE FROM \${PostsTable} WHERE \${PostsTable.title} = \${"Draft"} RETURNING *\`
-)
-
-// Wrapped in a transaction — throws → rolled back automatically
-await db.transaction(async (tx) => {
-    await tx.query(sql.void\`DELETE FROM \${PostsTable} WHERE \${PostsTable.user_id} = \${1}\`)
-    await tx.query(sql.void\`DELETE FROM \${UsersTable} WHERE \${UsersTable.id} = \${1}\`)
-})`}
-            />
-          </Tab>
-        </Tabs>
 
         <h2>Installation</h2>
 
@@ -216,6 +85,76 @@ await db.transaction(async (tx) => {
             <DynamicCodeBlock
               lang="bash"
               code={`yarn add -D damian && yarn add @damiandb/pg`}
+            />
+          </Tab>
+        </Tabs>
+
+        <h2>Quick Example</h2>
+
+        <Tabs
+          groupId="operation"
+          persist
+          items={["SELECT", "INSERT", "UPDATE", "DELETE"]}
+        >
+          <Tab value="SELECT">
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { db, sql } from './db'
+import { UsersTable } from 'tables'
+
+const searchParams = { email: "alice@example.com" }
+
+// no, this won't cause SQL injection
+const { rows } = await db.query(sql(UsersTable)\`
+    SELECT * FROM \${UsersTable}
+    WHERE \${UsersTable.email} = \${searchParams.email}
+\`)
+
+// row is typed as { id: number, name: string, email: string }
+const user = rows[0]`}
+            />
+          </Tab>
+          <Tab value="INSERT">
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { db, sql } from './db'
+import { UsersTable } from 'tables'
+
+const { cols, row } = UsersTable.createRow({ name: "Alice", email: "alice@example.com" })
+
+await db.query(sql\`
+    INSERT INTO \${UsersTable} \${sql.tuple(cols)}
+    VALUES \${sql.tuple(row)}
+\`)`}
+            />
+          </Tab>
+          <Tab value="UPDATE">
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { db, sql } from './db'
+import { UsersTable } from 'tables'
+
+const formInput = { name: "Alice Renamed" }
+
+await db.query(sql\`
+    UPDATE \${UsersTable}
+    SET \${UsersTable.name} = \${formInput.name}
+    WHERE \${UsersTable.id} = \${1}
+\`)`}
+            />
+          </Tab>
+          <Tab value="DELETE">
+            <DynamicCodeBlock
+              lang="ts"
+              code={`import { db, sql } from './db'
+import { PostsTable } from 'tables'
+
+const post = { id: 42 }
+
+await db.query(sql\`
+    DELETE FROM \${PostsTable}
+    WHERE \${PostsTable.id} = \${post.id}
+\`)`}
             />
           </Tab>
         </Tabs>

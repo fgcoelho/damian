@@ -5,6 +5,7 @@
   "type": "module",
   "exports": {
     "./tsconfig": "./ts/tsconfig.json",
+    "./tsconfig/build": "./ts/tsconfig.build.json",
     "./vite": "./vite/index.ts",
     "./vitest": "./vitest/index.ts",
     "./tsdown": "./tsdown/index.ts"

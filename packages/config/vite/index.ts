@@ -4,7 +4,11 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export function createViteConfig(dirname: string): UserConfig {
   return defineConfig({
-    plugins: [tsconfigPaths()],
+    plugins: [
+      tsconfigPaths({
+        projects: [path.resolve(dirname, "tsconfig.build.json")],
+      }),
+    ],
     build: {
       sourcemap: true,
     },

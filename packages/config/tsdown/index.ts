@@ -23,6 +23,7 @@ export function nodeLib({
     shims: true,
     clean,
     platform: "node",
+    tsconfig: "tsconfig.build.json",
     ...(banner ? { banner } : {}),
   };
 }

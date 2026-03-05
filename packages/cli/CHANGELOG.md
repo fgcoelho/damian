@@ -1,5 +1,14 @@
 # damian
 
+## 0.0.6
+
+### Patch Changes
+
+- Reduce bundle size and dependency count by removing useless dependencies.
+
+- Updated dependencies
+  - @damiandb/pg@0.0.5
+
 ## 0.0.5
 
 ### Minor Changes

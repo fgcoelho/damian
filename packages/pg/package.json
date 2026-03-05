@@ -1,11 +1,21 @@
 {
   "name": "@damiandb/pg",
-  "description": "PostgreSQL driver for Damian — type-safe SQL with Slonik",
+  "description": "PostgreSQL driver, built on top of Slonik.",
   "author": "Fernando Coelho",
+  "homepage": "https://damiandb.vercel.app",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fgcoelho/damian.git"
+  },
+  "keywords": [
+    "postgres",
+    "driver",
+    "damian"
+  ],
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -40,9 +50,7 @@
   },
   "dependencies": {
     "@slonik/pg-driver": "48.10.3",
-    "@standard-schema/spec": "^1.1.0",
-    "slonik": "48.10.3",
-    "vite-tsconfig-paths": "^6.1.1"
+    "slonik": "48.10.3"
   },
   "devDependencies": {
     "@damiandb/config": "workspace:*",

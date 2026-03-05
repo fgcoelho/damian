@@ -187,15 +187,9 @@ importers:
       '@slonik/pg-driver':
         specifier: 48.10.3
         version: 48.10.3(zod@4.3.6)
-      '@standard-schema/spec':
-        specifier: ^1.1.0
-        version: 1.1.0
       slonik:
         specifier: 48.10.3
         version: 48.10.3
-      vite-tsconfig-paths:
-        specifier: ^6.1.1
-        version: 6.1.1(typescript@5.9.3)(vite@7.3.1(@types/node@25.3.3)(jiti@2.6.1)(lightningcss@1.31.1)(tsx@4.21.0))
     devDependencies:
       '@biomejs/biome':
         specifier: 2.4.4

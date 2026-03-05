@@ -1,5 +1,5 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import type { TypeNameIdentifier, ValueExpression } from "slonik";
+import type { StandardSchemaV1 } from "../schema/standard-schema.js";
 import { identifier as sqlIdentifier } from "../sql/identifier.js";
 import {
   type AnyType,

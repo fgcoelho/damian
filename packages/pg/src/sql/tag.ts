@@ -1,4 +1,3 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import {
   createSqlTag,
   type PrimitiveValueExpression,
@@ -6,6 +5,7 @@ import {
   type ValueExpression,
 } from "slonik";
 import { DbError } from "../errors.js";
+import type { StandardSchemaV1 } from "../schema/standard-schema.js";
 import type { Table, TableShape } from "../table/index.js";
 import type { AnyType, Prettify, SQLFragment, SQLQuery } from "../utils.js";
 import {

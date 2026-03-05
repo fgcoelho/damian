@@ -1,5 +1,5 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { DbError } from "../errors.js";
+import type { StandardSchemaV1 } from "./standard-schema.js";
 
 export type DbSchema<T> = StandardSchemaV1<T> & {
   sqlType: string;

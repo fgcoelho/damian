@@ -1,5 +1,5 @@
-import type { StandardSchemaV1 } from "@standard-schema/spec";
 import { assertParseResult } from "../schema/index.js";
+import type { StandardSchemaV1 } from "../schema/standard-schema.js";
 import type { TableShape } from "../table/index.js";
 
 export function isTemplateArray(value: unknown): value is TemplateStringsArray {

@@ -36,11 +36,29 @@ function normalizeVarArgs<T>(args: [T[]] | T[]): T[] {
   return Array.isArray(args[0]) ? (args[0] as T[]) : (args as T[]);
 }
 
+function joinMembers(
+  args: OptionalJoinArgs,
+  glue: FragmentSqlToken,
+): ListSqlToken {
+  return sqlTag.join(filterUndefined(normalizeVarArgs(args)), glue);
+}
+
+type MapFn = {
+  <T, R>(array: T[], fn: (item: T) => R): R[];
+  <T, R>(array: T[], fn: (item: T, index: number) => R): R[];
+};
+
+type OptionalJoinArgs = [OptionalValueExpression[]] | OptionalValueExpression[];
+
 export type SqlTagPlugins = {
   void: VoidQueryFn;
-  comma: (
-    ...args: [OptionalValueExpression[]] | OptionalValueExpression[]
-  ) => ListSqlToken;
+  map: MapFn;
+  join: {
+    (members: readonly ValueExpression[], glue: FragmentSqlToken): ListSqlToken;
+    comma: (...args: OptionalJoinArgs) => ListSqlToken;
+    and: (...args: OptionalJoinArgs) => ListSqlToken;
+    or: (...args: OptionalJoinArgs) => ListSqlToken;
+  };
   alias: <T extends TableShape>(table: T, aliasName: string) => T;
   jsonArray: (values: Record<PropertyKey, AnyType>[]) => FragmentSqlToken;
   output: (tableOrColumn: TableShape | IdentifierSqlToken) => SelectBuilder;
@@ -66,10 +84,22 @@ export type SqlTagPlugins = {
 export const sqlTagPlugins: SqlTagPlugins = {
   void: sqlTag.typeAlias("void") as unknown as VoidQueryFn,
 
-  comma(...args: [OptionalValueExpression[]] | OptionalValueExpression[]) {
-    const values = normalizeVarArgs(args);
-    return sqlTag.join(filterUndefined(values), sqlTag.fragment`, `);
+  map<T, R>(array: T[], fn: (item: T, index: number) => R): R[] {
+    return array.map(fn);
   },
+
+  join: Object.assign(
+    (members: readonly ValueExpression[], glue: FragmentSqlToken) =>
+      sqlTag.join(members, glue),
+    {
+      comma: (...args: OptionalJoinArgs) =>
+        joinMembers(args, sqlTag.fragment`, `),
+      and: (...args: OptionalJoinArgs) =>
+        joinMembers(args, sqlTag.fragment` AND `),
+      or: (...args: OptionalJoinArgs) =>
+        joinMembers(args, sqlTag.fragment` OR `),
+    },
+  ),
 
   alias<T extends TableShape>(table: T, aliasName: string): T {
     if (table.tableName === aliasName) {

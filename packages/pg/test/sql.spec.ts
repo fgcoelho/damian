@@ -1,3 +1,4 @@
+import type { FragmentSqlToken } from "slonik";
 import { describe, expect, expectTypeOf, it } from "vitest";
 import { type SelectBuilder, s } from "../src/index.js";
 import { internalSQL as sql } from "../src/sql.js";
@@ -72,19 +73,74 @@ describe("sql(schema)", () => {
   });
 });
 
-describe("sql.comma", () => {
-  it("joins values with comma separator", () => {
-    const result = sql.comma(1, 2, 3);
-    expect(result.members).toHaveLength(3);
+describe("sql.map", () => {
+  it("maps an array with a callback that ignores index", () => {
+    const rows = [
+      [1, 2],
+      [3, 4],
+    ];
+    const result = sql.map(rows, sql.tuple);
+    expect(result).toHaveLength(2);
+    expect(result[0].sql).toMatch(/\(/);
   });
 
-  it("accepts an array overload", () => {
-    const result = sql.comma([1, 2]);
+  it("maps an array with a callback that uses index", () => {
+    const items = ["a", "b"];
+    const result = sql.map(
+      items,
+      (item: string, index: number) => sql`${item}::text -- ${index}`,
+    );
+    expect(result).toHaveLength(2);
+  });
+
+  it("type: callback without index param is accepted without error", () => {
+    const rows: number[][] = [[1], [2]];
+    const result = sql.map(rows, sql.tuple);
+    expectTypeOf(result).toMatchTypeOf<FragmentSqlToken[]>();
+  });
+});
+
+describe("sql.join", () => {
+  it("joins fragments with a custom separator", () => {
+    const a = sql`a = ${1}`;
+    const b = sql`b = ${2}`;
+    const result = sql.join([a, b], sql` OR `);
     expect(result.members).toHaveLength(2);
   });
 
-  it("filters out undefined values", () => {
-    const result = sql.comma(1, undefined, 3);
+  it(".comma accepts an array", () => {
+    const frags = [sql`a`, sql`b`, sql`c`];
+    const result = sql.join.comma(frags);
+    expect(result.members).toHaveLength(3);
+  });
+
+  it(".comma accepts spread args", () => {
+    const result = sql.join.comma(sql`a`, sql`b`);
+    expect(result.members).toHaveLength(2);
+  });
+
+  it(".and accepts spread args", () => {
+    const result = sql.join.and(sql`x = ${1}`, sql`y = ${2}`);
+    expect(result.members).toHaveLength(2);
+  });
+
+  it(".or accepts spread args", () => {
+    const result = sql.join.or(sql`x = ${1}`, sql`y = ${2}`);
+    expect(result.members).toHaveLength(2);
+  });
+
+  it(".comma filters undefined values from an array", () => {
+    const result = sql.join.comma([sql`a`, undefined, sql`b`]);
+    expect(result.members).toHaveLength(2);
+  });
+
+  it(".and filters undefined values from spread args", () => {
+    const result = sql.join.and(sql`x = ${1}`, undefined, sql`y = ${2}`);
+    expect(result.members).toHaveLength(2);
+  });
+
+  it(".or filters undefined values from spread args", () => {
+    const result = sql.join.or(sql`x = ${1}`, undefined, sql`y = ${2}`);
     expect(result.members).toHaveLength(2);
   });
 });

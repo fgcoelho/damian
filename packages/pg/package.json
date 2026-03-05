@@ -1,6 +1,6 @@
 {
   "name": "@damiandb/pg",
-  "description": "PostgreSQL driver, built on top of Slonik.",
+  "description": "PostgreSQL driver, built on top of Slonik, for Damian",
   "author": "Fernando Coelho",
   "homepage": "https://damiandb.vercel.app",
   "repository": {
@@ -15,7 +15,7 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.0.5",
+  "version": "0.0.6",
   "license": "MIT",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -58,10 +58,10 @@
     "@electric-sql/pglite": "^0.3.15",
     "@types/node": "25.3.3",
     "slonik-pglite-driver": "0.0.4",
-    "tsdown": "0.21.0-beta.2",
+    "tsdown": "0.21.0",
     "typescript": "5.9.3",
     "vite": "^7.3.1",
-    "vite-node": "^5.3.0",
+    "vite-tsconfig-paths": "6.1.1",
     "vitest": "^4.0.18"
   }
 }

@@ -21,16 +21,6 @@ export type SQLIdentifier = ReturnType<typeof sql.identifier>;
 
 export type SQLQuery = ReturnType<typeof sql.unsafe>;
 
-export const unsafeSQLFragment = (sqlString: string): SQLFragment => ({
-  sql: sqlString,
-  values: [],
-  type: SLONIK_FRAGMENT,
-});
-
-export function filterBoolean<T>(arr: (T | null | undefined | false)[]): T[] {
-  return arr.filter(Boolean) as T[];
-}
-
 export function filterUndefined<T>(arr: (T | undefined)[]): T[] {
   return arr.filter((v): v is T => v !== undefined);
 }

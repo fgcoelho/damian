@@ -1,13 +1,20 @@
 # @damiandb/pg
 
+## 0.0.7
+
+### Patch Changes
+
+- Replace unsafe string SQL fragments with proper sqlTag fragments to ensure
+  Safer and more consistent SQL token construction when building query pieces.
+
 ## 0.0.6
 
 ### Patch Changes
 
 - Improve `sql` tag APIs:
-    - Deprecated `sql.comma` in favor of `sql.join.comma` for better consistency with other join types.
-    - Added `sql.join.or` and `sql.join.and` for joining SQL fragments with "OR" and "AND" respectively.
-    - Added `sql.map` for improving readability when mapping over arrays to create SQL fragments.
+  - Deprecated `sql.comma` in favor of `sql.join.comma` for better consistency with other join types.
+  - Added `sql.join.or` and `sql.join.and` for joining SQL fragments with "OR" and "AND" respectively.
+  - Added `sql.map` for improving readability when mapping over arrays to create SQL fragments.
 
 ## 0.0.5
 

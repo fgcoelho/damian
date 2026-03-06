@@ -1,5 +1,12 @@
 # damian
 
+## 0.0.9
+
+### Patch Changes
+
+- Updated dependencies
+  - @damiandb/pg@0.0.7
+
 ## 0.0.8
 
 ### Patch Changes

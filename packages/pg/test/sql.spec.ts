@@ -286,8 +286,8 @@ describe("sql.excluded", () => {
   it("generates SET col = EXCLUDED.col pairs", () => {
     const cols = [sql.identifier(["a"]), sql.identifier(["b"])];
     const frag = sql.excluded(cols);
-    expect(frag.sql).toContain('a = EXCLUDED."a"');
-    expect(frag.sql).toContain('b = EXCLUDED."b"');
+    expect(frag.sql).toContain('"a" = EXCLUDED."a"');
+    expect(frag.sql).toContain('"b" = EXCLUDED."b"');
   });
 
   it("ignores specified columns", () => {

@@ -11,11 +11,9 @@ import { DbError } from "../errors.js";
 import type { TableShape } from "../table/index.js";
 import {
   type AnyType,
-  filterBoolean,
   filterUndefined,
   SLONIK_FRAGMENT,
   type SQLIdentifier,
-  unsafeSQLFragment,
 } from "../utils.js";
 import { buildSelect, type SelectBuilder } from "./select.js";
 
@@ -41,6 +39,10 @@ function joinMembers(
   glue: FragmentSqlToken,
 ): ListSqlToken {
   return sqlTag.join(filterUndefined(normalizeVarArgs(args)), glue);
+}
+
+function buildTuple(values: ValueExpression[]): FragmentSqlToken {
+  return sqlTag.fragment`(${sqlTag.join(values, sqlTag.fragment`, `)})`;
 }
 
 type MapFn = {
@@ -137,23 +139,24 @@ export const sqlTagPlugins: SqlTagPlugins = {
 
   excluded(cols: SQLIdentifier[], ignore: readonly SQLIdentifier[] = []) {
     const ignoredNames = new Set(ignore.map(getIdentifierTail));
-    const colsToUpdate = cols
+    const assignments = cols
       .map(getIdentifierTail)
-      .filter((name) => !ignoredNames.has(name));
-    return unsafeSQLFragment(
-      colsToUpdate.map((name) => `${name} = EXCLUDED."${name}"`).join(", "),
-    );
+      .filter((name) => !ignoredNames.has(name))
+      .map(
+        (name) =>
+          sqlTag.fragment`${sqlTag.identifier([name])} = EXCLUDED.${sqlTag.identifier([name])}`,
+      );
+    return sqlTag.fragment`${joinMembers(assignments, sqlTag.fragment`, `)}`;
   },
 
   inArray(column: ValueExpression, values: OptionalValueExpression[]) {
     const filtered = filterUndefined(values);
+
     if (filtered.length === 0) {
       return sqlTag.fragment`FALSE`;
     }
-    return sqlTag.fragment`${column} IN (${sqlTag.join(
-      filtered.map((v) => sqlTag.fragment`${v}`),
-      sqlTag.fragment`, `,
-    )})`;
+
+    return sqlTag.fragment`${column} IN ${buildTuple(filtered)}`;
   },
 
   target(column: IdentifierSqlToken) {
@@ -166,28 +169,19 @@ export const sqlTagPlugins: SqlTagPlugins = {
   },
 
   tuple(...tuple: [OptionalValueExpression[]] | OptionalValueExpression[]) {
-    const values = normalizeVarArgs(tuple);
-    return sqlTag.fragment`(${sqlTag.join(filterUndefined(values), sqlTag.fragment`, `)})`;
+    return sqlTag.fragment`(${joinMembers(tuple, sqlTag.fragment`, `)})`;
   },
 
   tuples(rows: OptionalValueExpression[][]) {
-    const filteredRows = filterBoolean(
-      rows.map((row) => {
-        const filtered = filterUndefined(row);
-        return filtered.length === 0 ? undefined : filtered;
-      }),
-    );
+    const validRows = rows
+      .map((row) => filterUndefined(row))
+      .filter((row) => row.length > 0);
 
-    if (filteredRows.length === 0) {
+    if (validRows.length === 0) {
       throw new DbError("EMPTY_TUPLES", "Cannot create tuples with no rows");
     }
 
-    return sqlTag.fragment`${sqlTag.join(
-      filteredRows.map(
-        (row) => sqlTag.fragment`(${sqlTag.join(row, sqlTag.fragment`, `)})`,
-      ),
-      sqlTag.fragment`, `,
-    )}`;
+    return sqlTag.fragment`${sqlTag.join(validRows.map(buildTuple), sqlTag.fragment`, `)}`;
   },
 
   identity(context: "and" | "or") {

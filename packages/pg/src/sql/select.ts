@@ -5,11 +5,7 @@ import {
 } from "slonik";
 import { DbError } from "../errors.js";
 import type { TableShape } from "../table/index.js";
-import {
-  type AnyType,
-  type SQLIdentifier,
-  unsafeSQLFragment,
-} from "../utils.js";
+import type { AnyType, SQLIdentifier } from "../utils.js";
 
 const sqlTag = createSqlTag({ typeAliases: { void: (() => {}) as AnyType } });
 
@@ -62,18 +58,6 @@ function buildTableFragment(
   return sqlTag.fragment`${tableId}.*`;
 }
 
-function buildJsonObjectPairs(
-  table: TableShape,
-  cols: IdentifierSqlToken[],
-): string {
-  return cols
-    .map((col) => {
-      const colName = getIdentifierTail(col);
-      return `'${colName}', "${table.tableName}"."${colName}"`;
-    })
-    .join(", ");
-}
-
 function buildExcludedColumnsFragment(
   table: TableShape,
   aliasName: string,
@@ -94,24 +78,27 @@ function buildExcludedColumnsFragment(
   }
 
   if (isJson) {
-    const pairs = buildJsonObjectPairs(table, available);
-    const expr = isArray
-      ? `array_agg(json_build_object(${pairs})) AS "${aliasName}"`
-      : `json_build_object(${pairs}) AS "${aliasName}"`;
-    return unsafeSQLFragment(expr);
+    const pairsFrags = available.map((col) => {
+      const colName = getIdentifierTail(col);
+      return sqlTag.fragment`${colName}, ${slonikSql.identifier([table.tableName, colName])}`;
+    });
+    const joinedPairs = sqlTag.join(pairsFrags, sqlTag.fragment`, `);
+
+    if (isArray) {
+      return sqlTag.fragment`array_agg(json_build_object(${joinedPairs})) AS ${slonikSql.identifier([aliasName])}`;
+    }
+    return sqlTag.fragment`json_build_object(${joinedPairs}) AS ${slonikSql.identifier([aliasName])}`;
   }
 
-  const columnList = available
-    .map(
-      (col: IdentifierSqlToken) =>
-        `"${table.tableName}"."${getIdentifierTail(col)}"`,
-    )
-    .join(", ");
+  const columnFrags = available.map((col) =>
+    slonikSql.identifier([table.tableName, getIdentifierTail(col)]),
+  );
+  const joinedColumns = sqlTag.join(columnFrags, sqlTag.fragment`, `);
 
   if (isArray) {
-    return unsafeSQLFragment(`array_agg((${columnList})) AS "${aliasName}"`);
+    return sqlTag.fragment`array_agg((${joinedColumns})) AS ${slonikSql.identifier([aliasName])}`;
   }
-  return unsafeSQLFragment(columnList);
+  return sqlTag.fragment`${joinedColumns}`;
 }
 
 function resolveFragment(

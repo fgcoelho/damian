@@ -2,17 +2,6 @@ import path from "node:path";
 import tsconfigPaths from "vite-tsconfig-paths";
 import { defineConfig } from "vitest/config";
 
-const jsToTs = {
-  name: "js-to-ts",
-  resolveId(id: string, importer?: string) {
-    if (importer && id.startsWith(".") && id.endsWith(".js")) {
-      const tsPath = `${id.slice(0, -3)}.ts`;
-      const resolved = path.resolve(path.dirname(importer), tsPath);
-      return resolved;
-    }
-  },
-};
-
 export interface VitestConfigOptions {
   dirname: string;
   fileParallelism?: boolean;
@@ -23,11 +12,10 @@ export function createVitestConfig({
   fileParallelism,
 }: VitestConfigOptions) {
   return defineConfig({
-    plugins: [tsconfigPaths(), jsToTs],
+    plugins: [tsconfigPaths()],
     test: {
       globals: true,
       environment: "node",
-      setupFiles: "./test/setup.ts",
       ...(fileParallelism !== undefined ? { fileParallelism } : {}),
       printConsoleTrace: true,
       exclude: [

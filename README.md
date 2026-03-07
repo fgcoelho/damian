@@ -11,7 +11,7 @@ Visit [https://npmjs.com/package/damian](https://www.npmjs.com/package/damian) t
 ## Installation
 
 ```bash
-npm i --save-dev damian && npm i @damiandb/pg
+npm i -D damian && npm i @damiandb/pg
 ```
 
 ```bash

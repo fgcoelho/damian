@@ -72,7 +72,7 @@ export default function HomePage() {
           <Tab value="npm">
             <DynamicCodeBlock
               lang="bash"
-              code={`npm install --save-dev damian && npm install @damiandb/pg`}
+              code={`npm install -D damian && npm install @damiandb/pg`}
             />
           </Tab>
           <Tab value="pnpm">

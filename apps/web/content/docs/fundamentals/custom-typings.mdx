@@ -3,76 +3,21 @@ title: Custom typings
 description: Override inferred types for specific columns
 ---
 
-## When to use
-
-By default, `damian generate` maps columns to built-in types: `varchar` becomes `string`, `jsonb` becomes `any`. This matches the database, but sometimes you want stricter TypeScript types.
-
-Use custom typings to replace inferred types with any Standard Schema-compatible validator (Zod, Valibot, ArkType, etc.).
+`damian generate` maps columns to built-in types: `varchar` becomes `string`, `jsonb` becomes `any`. Custom typings let you replace those with any [Standard Schema](https://standardschema.dev)-compatible validator.
 
 ---
 
 ## Define overrides
 
-`damian generate` produces `./damian/.generated/typings.ts`. Create `./damian/typings.ts` and call the factory with a nested object mapping `schema → table → column` to a validator:
+Create `./damian/typings.ts` and export a default object that `satisfies Typings`. Only include the columns you want to override.
 
 ```ts title="./damian/typings.ts"
-import { typings } from './.generated/typings'
-import { z } from 'zod'
-
-export default typings({
-    public: {
-        users: {
-            role: z.enum(["admin", "user"])
-        },
-        posts: {
-            payload: z.object({
-                title: z.string(),
-                body: z.string()
-            })
-        }
-    }
-})
-```
-
----
-
-## Generated file
-
-The generated `typings.ts` looks like:
-
-```ts title="./damian/.generated/typings.ts"
-import { typingsFactory } from '@damiandb/pg'
-
-export const typings = typingsFactory<{
-  public: {
-    users: {
-      id: any
-      name: any
-      role: any
-    }
-    posts: {
-      id: any
-      payload: any
-    }
-  }
-}>()
-```
-
-The factory validates structure, provides autocomplete for all schema/table/column names, and preserves exact types. Generated `tables.ts` then uses `s.externalSchema(typings.public.users.role, "varchar")`.
-
----
-
-## Supported libraries
-
-Any library implementing `@standard-schema/spec` works:
-
-```ts title="./damian/typings.ts"
-import { typings } from './.generated/typings'
+import type { Typings } from './.generated/typings'
 import { z } from 'zod'
 import * as v from 'valibot'
 import { type } from 'arktype'
 
-export default typings({
+export default {
     public: {
         users: {
             role: z.enum(["admin", "user"])
@@ -84,17 +29,41 @@ export default typings({
             status: type("'pending' | 'shipped' | 'delivered'")
         }
     }
-})
+} satisfies Typings
 ```
 
 ---
 
-## Apply overrides
-
-Run generate after creating or editing `./damian/typings.ts`:
+## Run generate
 
 ```bash
 npx damian generate
 ```
 
-Affected columns in `tables.ts` now use your validators. Queries using those tables automatically reflect the narrower types.
+Affected columns in `tables.ts` will use your validators, and queries on those tables automatically reflect the narrower types.
+
+---
+
+## Extra: understand the generated file
+
+`damian generate` produces `./damian/.generated/typings.ts`:
+
+```ts title="./damian/.generated/typings.ts"
+import type { CreateTypings } from '@damiandb/pg'
+
+export const typings = CreateTypings<{
+  public: {
+    users: {
+      id: any
+      name: any
+      role: any
+    }
+    posts: {
+      id: any
+      payload: any
+    }
+  }
+}>
+```
+
+`CreateTypings` validates structure and provides autocomplete for all schema, table, and column names.

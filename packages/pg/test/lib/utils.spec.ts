@@ -1,9 +1,9 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, expectTypeOf, it } from "vitest";
 import {
+  type Prettify,
   SLONIK_FRAGMENT,
   SLONIK_IDENTIFIER,
-  SLONIK_QUERY,
-} from "../src/utils.js";
+} from "../../src/lib/utils";
 
 describe("SLONIK_FRAGMENT", () => {
   it("is the well-known slonik fragment symbol", () => {
@@ -11,14 +11,16 @@ describe("SLONIK_FRAGMENT", () => {
   });
 });
 
-describe("SLONIK_QUERY", () => {
-  it("is the well-known slonik query symbol", () => {
-    expect(SLONIK_QUERY).toBe(Symbol.for("SLONIK_TOKEN_QUERY"));
-  });
-});
-
 describe("SLONIK_IDENTIFIER", () => {
   it("is the well-known slonik identifier symbol", () => {
     expect(SLONIK_IDENTIFIER).toBe(Symbol.for("SLONIK_TOKEN_IDENTIFIER"));
+  });
+});
+
+describe("Prettify<T>", () => {
+  it("flattens an intersection type into a plain object type", () => {
+    type Input = { a: string } & { b: number };
+    type Result = Prettify<Input>;
+    expectTypeOf<Result>().toEqualTypeOf<{ a: string; b: number }>();
   });
 });

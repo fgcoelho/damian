@@ -1,5 +1,5 @@
 import Case from "case";
-import type { ParsedTable } from "./schema-parser.js";
+import type { ParsedTable } from "./schema-parser";
 
 export function capitalize(str: string): string {
   return str.charAt(0).toUpperCase() + str.slice(1);
@@ -20,9 +20,9 @@ export function generateTypingsOutput(tables: ParsedTable[]): string {
 
   return [
     "// This file is auto-generated from the database schema. Do not edit directly.",
-    "import { defineTypings } from '@damiandb/pg';",
+    "import type { CreateTypings } from '@damiandb/pg';",
     "",
-    `export const typings = defineTypings<{\n${schemaBlocks.join("\n")}\n}>();`,
+    `export type Typings = CreateTypings<{\n${schemaBlocks.join("\n")}\n}>;`,
   ].join("\n");
 }
 

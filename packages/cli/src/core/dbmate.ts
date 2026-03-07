@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import chalk from "chalk";
 import { resolveBinary } from "dbmate";
 import logSymbols from "log-symbols";
-import type { DamianConfig } from "./config.js";
+import type { DamianConfig } from "./config";
 
 export function dbmateBin(): string {
   return resolveBinary();

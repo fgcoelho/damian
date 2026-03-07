@@ -3,23 +3,23 @@ import path from "node:path";
 import { Worker } from "node:worker_threads";
 import chalk from "chalk";
 import ora from "ora";
-import { BaseCommand } from "../base.js";
+import { BaseCommand } from "../base";
 import type {
   GenerateWorkerInput,
   GenerateWorkerOutput,
-} from "../core/generate/worker.js";
-import { logger } from "../core/logger.js";
+} from "../core/generate/worker";
+import { logger } from "../core/logger";
 import {
   filterDumpMigrations,
   listMigrationFiles,
   resolveGeneratedDir,
   resolveMigrationsDir,
-} from "../core/migrations.js";
-import { formatFiles } from "../utils/prettier.js";
+} from "../core/migrations";
+import { formatFiles } from "../utils/prettier";
 
-export { capitalize, generateTypingsOutput } from "../core/generate/output.js";
-export { getColumnType, parseTables } from "../core/generate/schema-parser.js";
-export { readTypings } from "../utils/typings-parser.js";
+export { capitalize, generateTypingsOutput } from "../core/generate/output";
+export { getColumnType, parseTables } from "../core/generate/schema-parser";
+export { readTypings } from "../utils/typings-parser";
 
 function runGenerateWorker(
   input: GenerateWorkerInput,

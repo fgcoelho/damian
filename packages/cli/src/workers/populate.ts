@@ -1,9 +1,9 @@
 import path from "node:path";
 import { parentPort, workerData } from "node:worker_threads";
 import { createJiti } from "jiti";
-import { topoSort } from "../core/populate/topo-sort.js";
-import { POPULATOR_BRAND, type PopulatorInstance } from "../populator.js";
-import { getTsconfigAliases } from "../utils/tsconfig.js";
+import { topoSort } from "../core/populate/topo-sort";
+import { POPULATOR_BRAND, type PopulatorInstance } from "../populator";
+import { getTsconfigAliases } from "../utils/tsconfig";
 
 export interface PopulateWorkerInput {
   filepaths: string[];

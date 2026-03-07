@@ -3,13 +3,13 @@ import { Flags } from "@oclif/core";
 import chalk from "chalk";
 import logSymbols from "log-symbols";
 import ora from "ora";
-import { BaseCommand } from "../base.js";
+import { BaseCommand } from "../base";
 import {
   discoverPopulators,
   type PopulatorMeta,
   type PopulatorRunResult,
   runPopulators,
-} from "../core/populate/runner.js";
+} from "../core/populate/runner";
 
 export type Populator = PopulatorMeta;
 

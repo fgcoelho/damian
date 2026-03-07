@@ -3,9 +3,9 @@ import path from "node:path";
 import { input } from "@inquirer/prompts";
 import { Args } from "@oclif/core";
 import chalk from "chalk";
-import { BaseCommand } from "../base.js";
-import { logger } from "../core/logger.js";
-import { resolveMigrationsDir } from "../core/migrations.js";
+import { BaseCommand } from "../base";
+import { logger } from "../core/logger";
+import { resolveMigrationsDir } from "../core/migrations";
 
 const NAME_PATTERN = /^[a-zA-Z0-9_\- ]+$/;
 

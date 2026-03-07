@@ -1,7 +1,7 @@
 import ora from "ora";
-import { BaseCommand } from "../base.js";
-import { requireDatabaseUrl } from "../core/config.js";
-import { resetDatabase } from "../utils/reset.js";
+import { BaseCommand } from "../base";
+import { requireDatabaseUrl } from "../core/config";
+import { resetDatabase } from "../utils/reset";
 
 export default class Reset extends BaseCommand<typeof Reset> {
   static description = "Drop all schemas and recreate public";

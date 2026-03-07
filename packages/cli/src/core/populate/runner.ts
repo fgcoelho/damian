@@ -1,7 +1,7 @@
 import path from "node:path";
 import { Worker } from "node:worker_threads";
 import { glob } from "glob";
-import type { DamianConfig } from "../config.js";
+import type { DamianConfig } from "../config";
 
 export type PopulatorMeta = {
   group: string;

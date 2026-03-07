@@ -4,9 +4,9 @@ import { parentPort } from "node:worker_threads";
 import { PGlite } from "@electric-sql/pglite";
 import { uuid_ossp } from "@electric-sql/pglite/contrib/uuid_ossp";
 import { pgDump } from "@electric-sql/pglite-tools/pg_dump";
-import { readTypings } from "../../utils/typings-parser.js";
-import { generateTablesOutput, generateTypingsOutput } from "./output.js";
-import { parseTables } from "./schema-parser.js";
+import { readTypings } from "../../utils/typings-parser";
+import { generateTablesOutput, generateTypingsOutput } from "./output";
+import { parseTables } from "./schema-parser";
 
 export interface GenerateWorkerInput {
   migrationsDir: string;
@@ -45,13 +45,29 @@ function stripSqlComments(raw: string): string {
 
 export async function buildSchemaFromMigrations(
   migrationsDir: string,
-  migrations: string[],
+  migrationFilenames: string[],
 ): Promise<string> {
-  const sqls = migrations.map((f) => readMigrationUpSection(migrationsDir, f));
   const pg = await PGlite.create({ extensions: { uuid_ossp } });
-  await pg.exec(sqls.join("\n"));
+
+  const migrations = migrationFilenames.map((filename) =>
+    readMigrationUpSection(migrationsDir, filename),
+  );
+
+  const BATCH_SIZE = 100;
+
+  for (let i = 0; i < migrations.length; i += BATCH_SIZE) {
+    const batch = migrations.slice(i, i + BATCH_SIZE);
+
+    const joinedBatch = batch.join("\n");
+
+    await pg.exec(joinedBatch);
+  }
+
   const result = await pgDump({ pg });
-  return stripSqlComments(await result.text());
+
+  const text = stripSqlComments(await result.text());
+
+  return text;
 }
 
 export async function run(input: GenerateWorkerInput): Promise<void> {
@@ -61,6 +77,7 @@ export async function run(input: GenerateWorkerInput): Promise<void> {
     migrationsDir,
     dumpMigrations,
   );
+
   const fullSchema = await buildSchemaFromMigrations(
     migrationsDir,
     allMigrations,

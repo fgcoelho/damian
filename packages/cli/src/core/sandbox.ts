@@ -1,4 +1,4 @@
-import type { PopulatorMeta } from "./populate/runner.js";
+import type { PopulatorMeta } from "./populate/runner";
 
 export type PartitionedPopulators = {
   core: PopulatorMeta[];

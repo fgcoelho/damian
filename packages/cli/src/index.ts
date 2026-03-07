@@ -1,16 +1,16 @@
 import "dotenv/config";
 import { run } from "@oclif/core";
-import Generate from "./commands/generate.js";
-import Migrate from "./commands/migrate.js";
-import New from "./commands/new.js";
-import Populate from "./commands/populate.js";
-import Reset from "./commands/reset.js";
-import Rollback from "./commands/rollback.js";
-import Sandbox from "./commands/sandbox.js";
+import Generate from "./commands/generate";
+import Migrate from "./commands/migrate";
+import New from "./commands/new";
+import Populate from "./commands/populate";
+import Reset from "./commands/reset";
+import Rollback from "./commands/rollback";
+import Sandbox from "./commands/sandbox";
 
-export { config } from "./core/config.js";
-export type { PopulatorDefinition } from "./populator.js";
-export { populator } from "./populator.js";
+export { config } from "./core/config";
+export type { PopulatorDefinition } from "./populator";
+export { populator } from "./populator";
 
 export const COMMANDS = {
   new: New,

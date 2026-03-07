@@ -1,8 +1,8 @@
-import { BaseCommand } from "../base.js";
-import { requireDatabaseUrl } from "../core/config.js";
-import { formatDbmateOutput, runDbmateCommand } from "../core/dbmate.js";
-import { logger } from "../core/logger.js";
-import { resolveMigrationsDir } from "../core/migrations.js";
+import { BaseCommand } from "../base";
+import { requireDatabaseUrl } from "../core/config";
+import { formatDbmateOutput, runDbmateCommand } from "../core/dbmate";
+import { logger } from "../core/logger";
+import { resolveMigrationsDir } from "../core/migrations";
 
 export default class Rollback extends BaseCommand<typeof Rollback> {
   static description = "Revert the last migration";

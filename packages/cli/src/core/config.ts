@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { createJiti } from "jiti";
-import { getTsconfigAliases } from "../utils/tsconfig.js";
+import { getTsconfigAliases } from "../utils/tsconfig";
 
 export type DamianConfig = {
   driver: "postgres";

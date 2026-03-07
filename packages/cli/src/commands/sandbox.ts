@@ -4,20 +4,20 @@ import { checkbox } from "@inquirer/prompts";
 import chalk from "chalk";
 import logSymbols from "log-symbols";
 import ora from "ora";
-import { BaseCommand } from "../base.js";
-import { buildDbmateEnv, dbmateBin } from "../core/dbmate.js";
+import { BaseCommand } from "../base";
+import { buildDbmateEnv, dbmateBin } from "../core/dbmate";
 import {
   discoverPopulators,
   type PopulatorMeta,
   runPopulators,
-} from "../core/populate/runner.js";
+} from "../core/populate/runner";
 import {
   partitionPopulators,
   resolveSelectedSandboxPopulators,
-} from "../core/sandbox.js";
-import { resetDatabase } from "../utils/reset.js";
-import Generate from "./generate.js";
-import { handlePopulatorFailure } from "./populate.js";
+} from "../core/sandbox";
+import { resetDatabase } from "../utils/reset";
+import Generate from "./generate";
+import { handlePopulatorFailure } from "./populate";
 
 export default class Sandbox extends BaseCommand<typeof Sandbox> {
   static description =

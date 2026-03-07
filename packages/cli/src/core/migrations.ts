@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { DamianConfig } from "./config.js";
+import type { DamianConfig } from "./config";
 
 export function resolveMigrationsDir(cfg: DamianConfig): string {
   return path.resolve(process.cwd(), cfg.root, ".migrations");

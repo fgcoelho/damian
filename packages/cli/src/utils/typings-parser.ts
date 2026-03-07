@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import { createJiti } from "jiti";
-import { getTsconfigAliases } from "./tsconfig.js";
+import { getTsconfigAliases } from "./tsconfig";
 
 type TypingsShape = Record<string, Record<string, Record<string, unknown>>>;
 

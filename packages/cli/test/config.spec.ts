@@ -2,7 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { config, loadConfig, loadEnv } from "../src/config.js";
+import { config, loadConfig, loadEnv } from "../src/config";
 
 describe("config()", () => {
   it("applies defaults for all omitted fields", () => {

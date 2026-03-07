@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import type { PopulatorMeta } from "../src/core/populate/runner.js";
+import type { PopulatorMeta } from "../src/core/populate/runner";
 import {
   partitionPopulators,
   resolveSelectedSandboxPopulators,
-} from "../src/core/sandbox.js";
+} from "../src/core/sandbox";
 
 function makePopulator(group: string, name: string): PopulatorMeta {
   return { group, name, filepath: `/fake/${group}/${name}.populator.ts` };

@@ -8,8 +8,8 @@ import {
   getColumnType,
   parseTables,
   readTypings,
-} from "../src/commands/generate.js";
-import { buildSchemaFromMigrations } from "../src/core/generate/worker.js";
+} from "../src/commands/generate";
+import { buildSchemaFromMigrations } from "../src/core/generate/worker";
 
 describe("capitalize()", () => {
   it("uppercases the first character", () => {
@@ -345,6 +345,46 @@ describe("buildSchemaFromMigrations()", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   });
+
+  it("handles many separate migration files as in a real project", async () => {
+    const tableCount = 450;
+
+    const tmpDir = fs.mkdtempSync(
+      path.join(os.tmpdir(), "damian-large-schema-test-"),
+    );
+
+    const migrationFiles = Array.from({ length: tableCount }, (_, i) => {
+      const tableIndex = i + 1;
+      const timestamp = `20240101${String(i).padStart(6, "0")}`;
+      const filename = `${timestamp}_create_users_${tableIndex}.sql`;
+      const sql = [
+        "-- migrate:up",
+        `CREATE TABLE public.users_${tableIndex} (`,
+        "  id bigserial PRIMARY KEY,",
+        "  tenant_id integer NOT NULL,",
+        "  email text UNIQUE NOT NULL,",
+        "  name text,",
+        "  created_at timestamptz DEFAULT now(),",
+        "  updated_at timestamptz DEFAULT now(),",
+        "  json_data jsonb",
+        ");",
+        "-- migrate:down",
+        `DROP TABLE public.users_${tableIndex};`,
+      ].join("\n");
+
+      fs.writeFileSync(path.join(tmpDir, filename), sql);
+
+      return filename;
+    });
+
+    try {
+      const result = await buildSchemaFromMigrations(tmpDir, migrationFiles);
+      expect(result).toContain("users_1");
+      expect(result).toContain(`users_${tableCount}`);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
+  }, 60_000);
 });
 
 describe("readTypings()", () => {

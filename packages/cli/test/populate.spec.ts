@@ -2,8 +2,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { discoverPopulators } from "../src/commands/populate.js";
-import type { DamianConfig } from "../src/config.js";
+import { discoverPopulators } from "../src/commands/populate";
+import type { DamianConfig } from "../src/config";
 
 function makeConfig(root: string): DamianConfig {
   return { driver: "postgres", root, env: ".env", url: undefined };

@@ -1,9 +1,12 @@
 /** biome-ignore-all lint/style/noNonNullAssertion: ! */
 import type { DatabasePool } from "@damiandb/pg";
+import { createSQL } from "@damiandb/pg";
 import { describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 let stablePool: DatabasePool | undefined;
+
+const sql = createSQL();
 
 vi.mock("@damiandb/pg", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@damiandb/pg")>();
@@ -11,6 +14,8 @@ vi.mock("@damiandb/pg", async (importOriginal) => {
   const { createPGLiteDriverFactory } = await import("slonik-pglite-driver");
 
   type PGliteParam = Parameters<typeof createPGLiteDriverFactory>[0];
+
+  async function noopResetConnection(): Promise<void> {}
 
   return {
     ...actual,
@@ -23,6 +28,7 @@ vi.mock("@damiandb/pg", async (importOriginal) => {
         stablePool = await actual.createDb({
           connectionString: "postgres://",
           driverFactory,
+          resetConnection: noopResetConnection,
         });
       }
       return { ...stablePool, end: async () => {} };
@@ -30,8 +36,7 @@ vi.mock("@damiandb/pg", async (importOriginal) => {
   };
 });
 
-const { resetDatabase } = await import("../src/utils/reset.js");
-const { sql } = await import("@damiandb/pg");
+const { resetDatabase } = await import("../src/utils/reset");
 
 describe("resetDatabase()", () => {
   it("resolves without error on a fresh database", async () => {
@@ -46,10 +51,8 @@ describe("resetDatabase()", () => {
 
     const pool = stablePool!;
 
-    await pool.transaction(async (tx) => {
-      await tx.query(sql.void`CREATE SCHEMA myapp`);
-      await tx.query(sql.void`CREATE TABLE myapp.items (id int)`);
-    });
+    await pool.query(sql.void`CREATE SCHEMA myapp`);
+    await pool.query(sql.void`CREATE TABLE myapp.items (id int)`);
 
     await resetDatabase("postgres://unused");
 

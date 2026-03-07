@@ -11,7 +11,7 @@ Visit [https://github.com/fgcoelho/damian](https://github.com/fgcoelho/damian) t
 ## Installation
 
 ```bash
-npm i --save-dev damian
+npm i -D damian
 ```
 
 ```bash

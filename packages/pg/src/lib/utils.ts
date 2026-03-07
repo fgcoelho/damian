@@ -1,6 +1,7 @@
 import type { sql } from "slonik";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export type Promisable<T> = T | Promise<T>;
+
 export type AnyType = any;
 
 export type Prettify<T> = {
@@ -8,8 +9,6 @@ export type Prettify<T> = {
 } & {};
 
 export const SLONIK_FRAGMENT = Symbol.for("SLONIK_TOKEN_FRAGMENT") as AnyType;
-
-export const SLONIK_QUERY = Symbol.for("SLONIK_TOKEN_QUERY") as AnyType;
 
 export const SLONIK_IDENTIFIER = Symbol.for(
   "SLONIK_TOKEN_IDENTIFIER",

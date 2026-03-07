@@ -5,9 +5,9 @@ export {
   isStandardSchema,
   isTable,
   isTemplateArray,
-} from "./parser.js";
-export { sqlTagPlugins } from "./plugins.js";
-export type { SelectBuilder, SelectChainable } from "./select.js";
-export { buildSelect } from "./select.js";
-export type { SQL, SqlTemplateToken, TaggedTemplateFn } from "./tag.js";
-export { createSQL, sql } from "./tag.js";
+} from "./parser";
+export { sqlTagPlugins } from "./plugins";
+export type { SelectBuilder, SelectChainable } from "./select";
+export { buildSelect } from "./select";
+export type { SQL, SqlTemplateToken, TaggedTemplateFn } from "./tag";
+export { createSQL } from "./tag";

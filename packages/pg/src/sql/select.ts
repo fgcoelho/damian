@@ -3,9 +3,9 @@ import {
   type IdentifierSqlToken,
   sql as slonikSql,
 } from "slonik";
-import { DbError } from "../errors.js";
-import type { TableShape } from "../table/index.js";
-import type { AnyType, SQLIdentifier } from "../utils.js";
+import { DbError } from "../lib/errors";
+import type { AnyType, SQLIdentifier } from "../lib/utils";
+import type { TableShape } from "../table/types";
 
 const sqlTag = createSqlTag({ typeAliases: { void: (() => {}) as AnyType } });
 
@@ -80,7 +80,7 @@ function buildExcludedColumnsFragment(
   if (isJson) {
     const pairsFrags = available.map((col) => {
       const colName = getIdentifierTail(col);
-      return sqlTag.fragment`${colName}, ${slonikSql.identifier([table.tableName, colName])}`;
+      return sqlTag.fragment`${slonikSql.literalValue(colName)}, ${slonikSql.identifier([table.tableName, colName])}`;
     });
     const joinedPairs = sqlTag.join(pairsFrags, sqlTag.fragment`, `);
 

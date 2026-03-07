@@ -1,6 +1,6 @@
-import { assertParseResult } from "../schema/index.js";
-import type { StandardSchemaV1 } from "../schema/standard-schema.js";
-import type { TableShape } from "../table/index.js";
+import type { StandardSchemaV1 } from "../lib/standard-schema";
+import { assertParseResult } from "../schema/utils";
+import type { TableShape } from "../table/types";
 
 export function isTemplateArray(value: unknown): value is TemplateStringsArray {
   return Array.isArray(value) && "raw" in (value as object);

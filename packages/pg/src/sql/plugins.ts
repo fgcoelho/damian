@@ -4,18 +4,19 @@ import {
   type IdentifierSqlToken,
   type ListSqlToken,
   type QuerySqlToken,
+  type SqlToken,
   sql as slonikSql,
   type ValueExpression,
 } from "slonik";
-import { DbError } from "../errors.js";
-import type { TableShape } from "../table/index.js";
+import { DbError } from "../lib/errors";
 import {
   type AnyType,
   filterUndefined,
   SLONIK_FRAGMENT,
   type SQLIdentifier,
-} from "../utils.js";
-import { buildSelect, type SelectBuilder } from "./select.js";
+} from "../lib/utils";
+import type { TableShape } from "../table/types";
+import { buildSelect, type SelectBuilder } from "./select";
 
 const sqlTag = createSqlTag({ typeAliases: { void: (() => {}) as AnyType } });
 
@@ -35,7 +36,7 @@ function normalizeVarArgs<T>(args: [T[]] | T[]): T[] {
 }
 
 function joinMembers(
-  args: OptionalJoinArgs,
+  args: JoinValueArgs,
   glue: FragmentSqlToken,
 ): ListSqlToken {
   return sqlTag.join(filterUndefined(normalizeVarArgs(args)), glue);
@@ -50,16 +51,16 @@ type MapFn = {
   <T, R>(array: T[], fn: (item: T, index: number) => R): R[];
 };
 
-type OptionalJoinArgs = [OptionalValueExpression[]] | OptionalValueExpression[];
+type JoinValueArgs = [OptionalValueExpression[]] | OptionalValueExpression[];
 
 export type SqlTagPlugins = {
   void: VoidQueryFn;
   map: MapFn;
   join: {
-    (members: readonly ValueExpression[], glue: FragmentSqlToken): ListSqlToken;
-    comma: (...args: OptionalJoinArgs) => ListSqlToken;
-    and: (...args: OptionalJoinArgs) => ListSqlToken;
-    or: (...args: OptionalJoinArgs) => ListSqlToken;
+    (members: readonly SqlToken[], glue: FragmentSqlToken): ListSqlToken;
+    comma: (...args: JoinValueArgs) => ListSqlToken;
+    and: (...args: JoinValueArgs) => ListSqlToken;
+    or: (...args: JoinValueArgs) => ListSqlToken;
   };
   alias: <T extends TableShape>(table: T, aliasName: string) => T;
   jsonArray: (values: Record<PropertyKey, AnyType>[]) => FragmentSqlToken;
@@ -91,15 +92,13 @@ export const sqlTagPlugins: SqlTagPlugins = {
   },
 
   join: Object.assign(
-    (members: readonly ValueExpression[], glue: FragmentSqlToken) =>
+    (members: readonly SqlToken[], glue: FragmentSqlToken) =>
       sqlTag.join(members, glue),
     {
-      comma: (...args: OptionalJoinArgs) =>
-        joinMembers(args, sqlTag.fragment`, `),
-      and: (...args: OptionalJoinArgs) =>
+      comma: (...args: JoinValueArgs) => joinMembers(args, sqlTag.fragment`, `),
+      and: (...args: JoinValueArgs) =>
         joinMembers(args, sqlTag.fragment` AND `),
-      or: (...args: OptionalJoinArgs) =>
-        joinMembers(args, sqlTag.fragment` OR `),
+      or: (...args: JoinValueArgs) => joinMembers(args, sqlTag.fragment` OR `),
     },
   ),
 

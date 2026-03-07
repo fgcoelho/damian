@@ -7,52 +7,32 @@ export {
   createTimestampTypeParser,
   createTypeParserPreset,
 } from "slonik";
-
 export type {
   CreateDbOptions,
   DatabasePool,
   DriverTypeParser,
   Interceptor,
-} from "./db.js";
-export { createDb } from "./db.js";
-export type { DbErrorCode } from "./errors.js";
-export { DbError } from "./errors.js";
-
-export type { DbSchema } from "./schema/index.js";
-export * as s from "./schema/index.js";
-export type { SelectBuilder, SQL, TaggedTemplateFn } from "./sql/index.js";
-export { buildSelect, createSQL, sql } from "./sql/index.js";
-
+} from "./driver/db";
+export { createDb } from "./driver/db";
+export type { DbErrorCode } from "./lib/errors";
+export { DbError } from "./lib/errors";
+export type {
+  Prettify,
+  SQLFragment,
+  SQLIdentifier,
+  SQLQuery,
+} from "./lib/utils";
+export type { DbSchema } from "./schema/index";
+export * as s from "./schema/index";
+export * from "./schema/index";
+export type { SelectBuilder, SQL, TaggedTemplateFn } from "./sql/index";
+export { buildSelect, createSQL } from "./sql/index";
 export type {
   Column,
   RowResult,
   RowsResult,
   Table,
   TableSchema,
-} from "./table/index.js";
-export { table } from "./table/index.js";
-
-export type {
-  Prettify,
-  SQLFragment,
-  SQLIdentifier,
-  SQLQuery,
-} from "./utils.js";
-
-export function defineTypings<
-  TShape extends Record<string, Record<string, Record<string, unknown>>>,
->() {
-  return <
-    const T extends Partial<{
-      [TSchema in keyof TShape]?: {
-        [TTable in keyof TShape[TSchema]]?: {
-          [TColumn in keyof TShape[TSchema][TTable]]?: unknown;
-        };
-      };
-    }>,
-  >(
-    customTypings: T,
-  ): T => customTypings;
-}
-
-export const typingsFactory = defineTypings;
+} from "./table/index";
+export { table } from "./table/index";
+export * from "./typings/index";

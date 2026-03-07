@@ -13,6 +13,7 @@ export type CreateDbOptions = {
   connectionString: string;
   driverFactory?: DriverFactory;
   interceptors?: readonly Interceptor[];
+  resetConnection?: () => Promise<void>;
   typeParsers?: readonly DriverTypeParser[];
 };
 

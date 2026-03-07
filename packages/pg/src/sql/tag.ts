@@ -4,10 +4,10 @@ import {
   type QuerySqlToken,
   type ValueExpression,
 } from "slonik";
-import { DbError } from "../errors.js";
-import type { StandardSchemaV1 } from "../schema/standard-schema.js";
-import type { Table, TableShape } from "../table/index.js";
-import type { AnyType, Prettify, SQLFragment, SQLQuery } from "../utils.js";
+import { DbError } from "../lib/errors";
+import type { StandardSchemaV1 } from "../lib/standard-schema";
+import type { AnyType, SQLFragment, SQLQuery } from "../lib/utils";
+import type { InferRowType, Table, TableShape } from "../table/types";
 import {
   buildSchemaRecordParser,
   createSchemaParser,
@@ -15,14 +15,10 @@ import {
   isStandardSchema,
   isTable,
   isTemplateArray,
-} from "./parser.js";
-import { type SqlTagPlugins, sqlTagPlugins } from "./plugins.js";
+} from "./parser";
+import { type SqlTagPlugins, sqlTagPlugins } from "./plugins";
 
 const sqlTag = createSqlTag({ typeAliases: { void: (() => {}) as AnyType } });
-
-type InferRowType<S extends Record<string, StandardSchemaV1>> = Prettify<{
-  [K in keyof S]: StandardSchemaV1.InferOutput<S[K]>;
-}>;
 
 export type TaggedTemplateFn<T extends StandardSchemaV1> = (
   template: TemplateStringsArray,
@@ -118,5 +114,3 @@ function mainSql(
 export function createSQL(): SQL {
   return Object.assign(mainSql, sqlTag, sqlTagPlugins) as SQL;
 }
-
-export const sql: SQL = createSQL();

@@ -1,0 +1,33 @@
+---
+title: Limitations
+description: Known constraints to keep in mind before adopting
+icon: ExclamationTriangle
+---
+
+## Postgres
+
+Only PostgreSQL is supported. There are plans to support other databases, but they are far from release.
+
+---
+
+## Table count
+
+There is a hard limit on the number of tables in a schema. In practice, schemas approaching roughly 450 tables (15 thousand lines) cause the PGLite dump to crash.
+
+---
+
+## Extension support
+
+Because Damian relies on PGLite, not all PostgreSQL extensions are available. PostGIS, for example, is widely used but currently unsupported.
+
+Damian will support real database connection instead of in-memory databases in the future, which will allow using any extension. 
+
+---
+
+## Query typing
+
+Queries are not typed by default. When writing raw SQL, you must explicitly specify the expected return type.
+
+Types helpers can be generated, but it is your responsibility to associate the right type with each query.
+
+Test your queries.

@@ -1,11 +1,17 @@
 # @damiandb/pg
 
+## 0.0.8
+
+### Patch Changes
+
+- Refactor library to improve code quality and maintainability
+
 ## 0.0.7
 
 ### Patch Changes
 
 - Replace unsafe string SQL fragments with proper sqlTag fragments to ensure
-  Safer and more consistent SQL token construction when building query pieces.
+  safer and more consistent SQL token construction when building query pieces.
 
 ## 0.0.6
 

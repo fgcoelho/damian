@@ -1,5 +1,13 @@
 # damian
 
+## 0.0.10
+
+### Patch Changes
+
+- Refactor library to improve code quality and maintainability
+- Updated dependencies
+  - @damiandb/pg@0.0.8
+
 ## 0.0.9
 
 ### Patch Changes

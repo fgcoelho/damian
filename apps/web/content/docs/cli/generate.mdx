@@ -11,7 +11,20 @@ Reads all migration files, applies them to an in-memory database, produces:
 |--------|---------|
 | `./damian/.generated/tables.ts` | TypeScript table definitions for queries |
 | `./damian/.generated/typings.ts` | Wraps custom typings from `./damian/typings.ts` |
-| `./damian/db.sql` | SQL dump of current schema (for version control) |
+| `./damian/.generated/db.sql` | SQL dump of current schema (for version control) |
+
+`tables.ts` follows `output` from `damian.config.ts`:
+
+- `output.kind: "damian"` imports from `@damiandb/pg`
+- `output.kind: "drizzle"` imports from `drizzle-orm/pg-core`
+
+For Drizzle output, `output.casing` controls generated property names:
+
+- `"preserve"` keeps database column names as-is
+- `"camel"` converts generated property names to camelCase
+- `"snake"` converts generated property names to snake_case
+
+Default: `output: { kind: "damian", casing: "preserve" }`
 
 ---
 
@@ -37,14 +50,34 @@ yarn damian generate
 
 ## Skip migrations from dump
 
-Use `devDumpIgnore` in `damian.config.ts` to exclude specific files from `db.sql` while including them in type generation. Useful for cleaning up schema dumps by omitting seed data:
+Use `devDumpIgnore` in `damian.config.ts` to exclude specific files from generated `db.sql` while including them in type generation. Useful for cleaning up schema dumps by omitting seed data:
 
 ```ts title="damian.config.ts"
 import { config } from 'damian'
 
 export default config({
     driver: 'postgres',
+    output: {
+        kind: 'damian',
+        casing: 'preserve'
+    },
     url: process.env.DATABASE_URL,
     devDumpIgnore: ['20240101000000_seed_dev_data.sql']
+})
+```
+
+## Generate Drizzle tables
+
+```ts title="damian.config.ts"
+import { config } from 'damian'
+
+export default config({
+    driver: 'postgres',
+    output: {
+        kind: 'drizzle',
+        casing: 'preserve',
+        isoTimestamp: true,
+    },
+    url: process.env.DATABASE_URL
 })
 ```

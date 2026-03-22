@@ -32,6 +32,10 @@ import { config } from "damian"
 
 export default config({
     driver: "postgres",
+    output: {
+        kind: "damian",
+        casing: "preserve",
+    },
     root: "./damian",
     env: ".env",
     url: process.env.DATABASE_URL
@@ -77,7 +81,9 @@ npx damian migrate
 npx damian generate
 ```
 
-Produces `tables.ts`, `typings.ts`, and `db.sql`.
+Produces `tables.ts`, `typings.ts`, and `.generated/db.sql`.
+
+Set `output.kind: "drizzle"` to generate Drizzle tables instead of Damian tables. Use `output.casing: "preserve" | "camel" | "snake"` to control generated property names; default is `"preserve"`.
 
 ---
 

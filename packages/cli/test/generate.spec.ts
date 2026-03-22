@@ -1,15 +1,18 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   capitalize,
+  generateDrizzleTablesOutput,
   generateTypingsOutput,
   getColumnType,
   parseTables,
   readTypings,
+  resolveGenerateOutputPaths,
 } from "../src/commands/generate";
-import { buildSchemaFromMigrations } from "../src/core/generate/worker";
+import { buildSchemaFromMigrations } from "../src/core/generate/helpers/worker";
 
 describe("capitalize()", () => {
   it("uppercases the first character", () => {
@@ -318,6 +321,564 @@ describe("generateTypingsOutput()", () => {
     expect(output).toContain("my_schema:");
     expect(output).not.toContain("mySchema:");
   });
+
+  it("omits damian imports for drizzle typings output", () => {
+    const tables = [
+      {
+        schema: "public",
+        table: "users",
+        columns: [
+          { name: "id", schemaType: 's.string("uuid")', sqlType: "uuid" },
+        ],
+      },
+    ];
+
+    const output = generateTypingsOutput(tables, "drizzle");
+    expect(output).toContain("type CreateTypings<");
+    expect(output).not.toContain("@damiandb/pg");
+  });
+});
+
+describe("generateDrizzleTablesOutput()", () => {
+  it("renders drizzle tables, schemas, constraints, and custom typings", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "users",
+            columns: [
+              {
+                name: "id",
+                ordinalPosition: 1,
+                fullDataType: "bigint",
+                dataType: "bigint",
+                udtName: "int8",
+                nullable: false,
+                defaultValue: "nextval('users_id_seq'::regclass)",
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+              {
+                name: "role",
+                ordinalPosition: 2,
+                fullDataType: "text",
+                dataType: "text",
+                udtName: "text",
+                nullable: false,
+                defaultValue: "'user'::text",
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: { name: "users_pkey", columns: ["id"] },
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+          {
+            schema: "auth",
+            table: "accounts",
+            columns: [
+              {
+                name: "id",
+                ordinalPosition: 1,
+                fullDataType: "uuid",
+                dataType: "uuid",
+                udtName: "uuid",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+              {
+                name: "user_id",
+                ordinalPosition: 2,
+                fullDataType: "bigint",
+                dataType: "bigint",
+                udtName: "int8",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: { name: "accounts_pkey", columns: ["id"] },
+            uniqueConstraints: [
+              { name: "accounts_user_id_key", columns: ["user_id"] },
+            ],
+            foreignKeys: [
+              {
+                name: "accounts_user_id_fkey",
+                columns: ["user_id"],
+                foreignSchema: "public",
+                foreignTable: "users",
+                foreignColumns: ["id"],
+                onUpdate: "cascade",
+                onDelete: "set null",
+              },
+            ],
+          },
+        ],
+      },
+      { "public.users.role": "custom" },
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    expect(output).toContain("from 'drizzle-orm/pg-core'");
+    expect(output).toContain("import typings from '../typings';");
+    expect(output).toContain('const authSchema = pgSchema("auth");');
+    expect(output).toContain('export const UsersTable = pgTable("users",');
+    expect(output).toContain(
+      'export const AccountsTable = authSchema.table("accounts",',
+    );
+    expect(output).toContain("bigserial(\"id\", { mode: 'number' })");
+    expect(output).toContain(
+      '.references(() => UsersTable.id, { onDelete: "set null", onUpdate: "cascade" })',
+    );
+    expect(output).toContain(
+      'unique("accounts_user_id_key").on(table.user_id)',
+    );
+    expect(output).toContain(
+      ".$type<InferTypingOutput<typeof typings.public.users.role>>()",
+    );
+    expect(output).toContain("(table) => [");
+    expect(output).not.toContain("@damiandb/pg");
+  });
+
+  it("keeps original column casing by default in drizzle output", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "user_profile",
+            columns: [
+              {
+                name: "created_at",
+                ordinalPosition: 1,
+                fullDataType: "timestamp",
+                dataType: "timestamp without time zone",
+                udtName: "timestamp",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      {},
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    expect(output).toContain('created_at: timestamp("created_at")');
+    expect(output).not.toContain("createdAt:");
+  });
+
+  it("supports camel casing in drizzle output when requested", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "user_profile",
+            columns: [
+              {
+                name: "created_at",
+                ordinalPosition: 1,
+                fullDataType: "timestamp",
+                dataType: "timestamp without time zone",
+                udtName: "timestamp",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      {},
+      { kind: "drizzle", casing: "camel", isoTimestamp: false },
+    );
+
+    expect(output).toContain('createdAt: timestamp("created_at")');
+  });
+
+  it("wraps InferTypingOutput with SafeStringify", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "users",
+            columns: [
+              {
+                name: "role",
+                ordinalPosition: 1,
+                fullDataType: "varchar",
+                dataType: "character varying",
+                udtName: "varchar",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      { "public.users.role": "custom" },
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    expect(output).toContain("type SafeStringify<T>");
+    expect(output).not.toContain("export type SafeStringify<T>");
+    expect(output).toContain(
+      "type InferTypingOutput<T extends StandardSchemaLike> = SafeStringify<",
+    );
+  });
+
+  it("emits syntactically valid TypeScript when custom typings are used", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "users",
+            columns: [
+              {
+                name: "role",
+                ordinalPosition: 1,
+                fullDataType: "text",
+                dataType: "text",
+                udtName: "text",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      { "public.users.role": "custom" },
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    const result = ts.transpileModule(output, {
+      compilerOptions: {
+        module: ts.ModuleKind.ESNext,
+        target: ts.ScriptTarget.ES2022,
+      },
+      reportDiagnostics: true,
+    });
+
+    expect(result.diagnostics).toEqual([]);
+  });
+
+  it("imports sql from drizzle-orm when raw defaults are needed", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "events",
+            columns: [
+              {
+                name: "created_at",
+                ordinalPosition: 1,
+                fullDataType: "timestamp with time zone",
+                dataType: "timestamp with time zone",
+                udtName: "timestamptz",
+                nullable: false,
+                defaultValue: "timezone('utc'::text, now())",
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      {},
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    expect(output).toContain("from 'drizzle-orm/pg-core';");
+    expect(output).toContain("import { sql } from 'drizzle-orm';");
+    expect(output).not.toContain(
+      "sql, timestamp } from 'drizzle-orm/pg-core';",
+    );
+    expect(output).toContain(".default(sql`");
+  });
+
+  it("can emit iso timestamp columns for drizzle", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "public",
+            table: "users",
+            columns: [
+              {
+                name: "created_at",
+                ordinalPosition: 1,
+                fullDataType: "timestamp with time zone",
+                dataType: "timestamp with time zone",
+                udtName: "timestamptz",
+                nullable: false,
+                defaultValue: "now()",
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: 6,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      {},
+      { kind: "drizzle", casing: "preserve", isoTimestamp: true },
+    );
+
+    expect(output).toContain(
+      "import { customType, pgTable } from 'drizzle-orm/pg-core';",
+    );
+    expect(output).toContain("const isoTimestamp = customType<{");
+    expect(output).toContain(
+      'created_at: isoTimestamp("created_at", { precision: 6 })',
+    );
+    expect(output).toContain(".default(sql`now()`)");
+    expect(output).not.toContain('timestamp("created_at"');
+    expect(output).toContain(
+      `const normalized = value.endsWith('Z') ? value : \`\${value}Z\`;`,
+    );
+    expect(output).not.toContain("withTimezone");
+    expect(output).not.toContain("mode: 'string'");
+    expect(output).not.toContain("format: 'ISO8601'");
+  });
+
+  it("parses typed array and json defaults into runtime literals", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "exercise",
+            table: "exercise",
+            columns: [
+              {
+                name: "tags",
+                ordinalPosition: 1,
+                fullDataType: "character varying[]",
+                dataType: "ARRAY",
+                udtName: "_varchar",
+                nullable: false,
+                defaultValue: "'{}'::character varying[]",
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+              {
+                name: "wording",
+                ordinalPosition: 2,
+                fullDataType: "jsonb",
+                dataType: "jsonb",
+                udtName: "jsonb",
+                nullable: false,
+                defaultValue: `'{"name":{"pt":"Nome"}}'::jsonb`,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: null,
+            uniqueConstraints: [],
+            foreignKeys: [],
+          },
+        ],
+      },
+      {
+        "exercise.exercise.tags": "custom",
+        "exercise.exercise.wording": "custom",
+      },
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    expect(output).toContain(
+      ".default([] as InferTypingOutput<typeof typings.exercise.exercise.tags>)",
+    );
+    expect(output).toContain(
+      '.default({"name":{"pt":"Nome"}} as InferTypingOutput<typeof typings.exercise.exercise.wording>)',
+    );
+  });
+
+  it("uses AnyPgColumn annotations for cyclic references", () => {
+    const output = generateDrizzleTablesOutput(
+      {
+        tables: [
+          {
+            schema: "exercise",
+            table: "exercise_category",
+            columns: [
+              {
+                name: "id",
+                ordinalPosition: 1,
+                fullDataType: "uuid",
+                dataType: "uuid",
+                udtName: "uuid",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+              {
+                name: "featured_exercise_id",
+                ordinalPosition: 2,
+                fullDataType: "uuid",
+                dataType: "uuid",
+                udtName: "uuid",
+                nullable: true,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+              {
+                name: "parent_id",
+                ordinalPosition: 3,
+                fullDataType: "uuid",
+                dataType: "uuid",
+                udtName: "uuid",
+                nullable: true,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: { name: "exercise_category_pkey", columns: ["id"] },
+            uniqueConstraints: [],
+            foreignKeys: [
+              {
+                name: "exercise_category_featured_exercise_id_fkey",
+                columns: ["featured_exercise_id"],
+                foreignSchema: "exercise",
+                foreignTable: "exercise",
+                foreignColumns: ["id"],
+                onUpdate: null,
+                onDelete: null,
+              },
+              {
+                name: "exercise_category_parent_id_fkey",
+                columns: ["parent_id"],
+                foreignSchema: "exercise",
+                foreignTable: "exercise_category",
+                foreignColumns: ["id"],
+                onUpdate: null,
+                onDelete: null,
+              },
+            ],
+          },
+          {
+            schema: "exercise",
+            table: "exercise",
+            columns: [
+              {
+                name: "id",
+                ordinalPosition: 1,
+                fullDataType: "uuid",
+                dataType: "uuid",
+                udtName: "uuid",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+              {
+                name: "category_id",
+                ordinalPosition: 2,
+                fullDataType: "uuid",
+                dataType: "uuid",
+                udtName: "uuid",
+                nullable: false,
+                defaultValue: null,
+                characterMaximumLength: null,
+                numericPrecision: null,
+                numericScale: null,
+                datetimePrecision: null,
+              },
+            ],
+            primaryKey: { name: "exercise_pkey", columns: ["id"] },
+            uniqueConstraints: [],
+            foreignKeys: [
+              {
+                name: "exercise_category_id_fkey",
+                columns: ["category_id"],
+                foreignSchema: "exercise",
+                foreignTable: "exercise_category",
+                foreignColumns: ["id"],
+                onUpdate: null,
+                onDelete: null,
+              },
+            ],
+          },
+        ],
+      },
+      {},
+      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
+    );
+
+    expect(output).toContain("type AnyPgColumn");
+    expect(output).toContain(
+      ".references((): AnyPgColumn => ExerciseCategoryTable.id)",
+    );
+    expect(output).toContain('foreignKey({ name: "exercise_category_id_fkey"');
+  });
 });
 
 describe("buildSchemaFromMigrations()", () => {
@@ -385,6 +946,16 @@ describe("buildSchemaFromMigrations()", () => {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     }
   }, 60_000);
+});
+
+describe("resolveGenerateOutputPaths()", () => {
+  it("places db.sql inside the generated directory", () => {
+    const result = resolveGenerateOutputPaths("/repo/damian/.generated");
+
+    expect(result.tablesFile).toBe("/repo/damian/.generated/tables.ts");
+    expect(result.typingsFile).toBe("/repo/damian/.generated/typings.ts");
+    expect(result.dbSqlFile).toBe("/repo/damian/.generated/db.sql");
+  });
 });
 
 describe("readTypings()", () => {

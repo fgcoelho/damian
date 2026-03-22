@@ -8,6 +8,7 @@ describe("config()", () => {
   it("applies defaults for all omitted fields", () => {
     const result = config({});
     expect(result.driver).toBe("postgres");
+    expect(result.output).toEqual({ kind: "damian", casing: "preserve" });
     expect(result.root).toBe("./damian");
     expect(result.env).toBe(".env");
     expect(result.devDumpIgnore).toEqual([]);
@@ -16,12 +17,18 @@ describe("config()", () => {
   it("uses provided values when supplied", () => {
     const result = config({
       driver: "postgres",
+      output: { kind: "drizzle", casing: "camel", isoTimestamp: true },
       root: "./custom",
       env: ".env.prod",
       url: "postgres://localhost/mydb",
       devDumpIgnore: ["seed.sql"],
     });
     expect(result.driver).toBe("postgres");
+    expect(result.output).toEqual({
+      kind: "drizzle",
+      casing: "camel",
+      isoTimestamp: true,
+    });
     expect(result.root).toBe("./custom");
     expect(result.env).toBe(".env.prod");
     expect(result.url).toBe("postgres://localhost/mydb");
@@ -38,6 +45,18 @@ describe("config()", () => {
     } else {
       process.env.DATABASE_URL = original;
     }
+  });
+
+  it("defaults drizzle-specific options when omitted", () => {
+    const result = config({
+      output: { kind: "drizzle" },
+    });
+
+    expect(result.output).toEqual({
+      kind: "drizzle",
+      casing: "preserve",
+      isoTimestamp: false,
+    });
   });
 
   it("url is undefined when not provided and DATABASE_URL is not set", () => {

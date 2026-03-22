@@ -6,7 +6,13 @@ import { discoverPopulators } from "../src/commands/populate";
 import type { DamianConfig } from "../src/config";
 
 function makeConfig(root: string): DamianConfig {
-  return { driver: "postgres", root, env: ".env", url: undefined };
+  return {
+    driver: "postgres",
+    output: { kind: "damian", casing: "preserve" },
+    root,
+    env: ".env",
+    url: undefined,
+  };
 }
 
 describe("discoverPopulators()", () => {

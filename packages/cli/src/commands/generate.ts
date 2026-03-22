@@ -7,7 +7,8 @@ import { BaseCommand } from "../base";
 import type {
   GenerateWorkerInput,
   GenerateWorkerOutput,
-} from "../core/generate/worker";
+} from "../core/generate/helpers/worker";
+import { generateDrizzleTablesOutput } from "../core/generate/outputs/drizzle-output";
 import { logger } from "../core/logger";
 import {
   filterDumpMigrations,
@@ -17,9 +18,28 @@ import {
 } from "../core/migrations";
 import { formatFiles } from "../utils/prettier";
 
-export { capitalize, generateTypingsOutput } from "../core/generate/output";
-export { getColumnType, parseTables } from "../core/generate/schema-parser";
+export {
+  capitalize,
+  generateTypingsOutput,
+} from "../core/generate/outputs/damian-output";
+export { generateDrizzleTablesOutput };
+export {
+  getColumnType,
+  parseTables,
+} from "../core/generate/helpers/schema-parser";
 export { readTypings } from "../utils/typings-parser";
+
+export function resolveGenerateOutputPaths(generatedDir: string): {
+  tablesFile: string;
+  typingsFile: string;
+  dbSqlFile: string;
+} {
+  return {
+    tablesFile: path.join(generatedDir, "tables.ts"),
+    typingsFile: path.join(generatedDir, "typings.ts"),
+    dbSqlFile: path.join(generatedDir, "db.sql"),
+  };
+}
 
 function runGenerateWorker(
   input: GenerateWorkerInput,
@@ -34,13 +54,19 @@ function runGenerateWorker(
 
 function writeGeneratedFiles(
   dbSqlFile: string,
-  tablesFile: string,
-  typingsOutputFile: string,
+  generatedDir: string,
   result: GenerateWorkerOutput,
-): void {
+): string[] {
   fs.writeFileSync(dbSqlFile, result.cleanDump, "utf8");
-  fs.writeFileSync(tablesFile, result.tablesOutput, "utf8");
-  fs.writeFileSync(typingsOutputFile, result.typingsOutput, "utf8");
+
+  const filePaths: string[] = [];
+  for (const artifact of result.artifacts) {
+    const filePath = path.join(generatedDir, artifact.fileName);
+    fs.writeFileSync(filePath, artifact.content, "utf8");
+    filePaths.push(filePath);
+  }
+
+  return filePaths;
 }
 
 export default class Generate extends BaseCommand<typeof Generate> {
@@ -50,9 +76,11 @@ export default class Generate extends BaseCommand<typeof Generate> {
     const cwd = process.cwd();
     const migrationsDir = resolveMigrationsDir(this.cfg);
     const generatedDir = resolveGeneratedDir(this.cfg);
-    const tablesFile = path.join(generatedDir, "tables.ts");
-    const typingsOutputFile = path.join(generatedDir, "typings.ts");
-    const dbSqlFile = path.resolve(cwd, this.cfg.root, "db.sql");
+    const {
+      tablesFile,
+      typingsFile: typingsOutputFile,
+      dbSqlFile,
+    } = resolveGenerateOutputPaths(generatedDir);
     const typingsFile = path.resolve(cwd, this.cfg.root, "typings.ts");
 
     fs.mkdirSync(generatedDir, { recursive: true });
@@ -66,14 +94,15 @@ export default class Generate extends BaseCommand<typeof Generate> {
     const spin = ora({ text: "Generating types...", spinner: "dots" }).start();
 
     const result = await runGenerateWorker({
+      output: this.cfg.output,
       migrationsDir,
       dumpMigrations,
       allMigrations,
       typingsFile,
     });
 
-    writeGeneratedFiles(dbSqlFile, tablesFile, typingsOutputFile, result);
-    await formatFiles([tablesFile, typingsOutputFile]);
+    const generatedFiles = writeGeneratedFiles(dbSqlFile, generatedDir, result);
+    await formatFiles(generatedFiles);
 
     spin.succeed(
       `Generated ${chalk.cyan(path.relative(cwd, tablesFile))} and ${chalk.cyan(path.relative(cwd, typingsOutputFile))}`,

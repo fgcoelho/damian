@@ -1,5 +1,5 @@
 ---
-model: github-copilot/claude-sonnet-4.6
+model: github-copilot/gpt-5.3-codex
 color: "#38A3EE"
 ---
 

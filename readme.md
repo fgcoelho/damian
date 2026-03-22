@@ -33,6 +33,10 @@ import { config } from "damian";
 
 export default config({
 	driver: "postgres",
+	output: {
+		kind: "damian",
+		casing: "preserve",
+	},
 	root: "./damian",
 	migrationsTable: "public.migrations",
 	url: process.env.DATABASE_URL!,

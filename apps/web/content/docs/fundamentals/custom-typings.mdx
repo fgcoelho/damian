@@ -40,7 +40,7 @@ export default {
 npx damian generate
 ```
 
-Affected columns in `tables.ts` will use your validators, and queries on those tables automatically reflect the narrower types.
+Affected columns in `tables.ts` will use your validators. Damian output wraps them with `s.fromStandard(...)`, while Drizzle output applies the inferred type via `.$type<...>()`.
 
 ---
 

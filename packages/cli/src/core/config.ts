@@ -2,9 +2,15 @@ import fs from "node:fs";
 import path from "node:path";
 import { createJiti } from "jiti";
 import { getTsconfigAliases } from "../utils/tsconfig";
+import type {
+  DamianOutputConfig,
+  DrizzleOutputConfig,
+  OutputConfig,
+} from "./generate/helpers/schema-model";
 
 export type DamianConfig = {
   driver: "postgres";
+  output: OutputConfig;
   root: string;
   env: string;
   url: string | undefined;
@@ -12,8 +18,13 @@ export type DamianConfig = {
   devDumpIgnore?: string[];
 };
 
+type UserOutputConfig =
+  | (Partial<DamianOutputConfig> & { kind?: "damian" })
+  | (Partial<DrizzleOutputConfig> & { kind: "drizzle" });
+
 type UserConfig = {
   driver?: "postgres";
+  output?: UserOutputConfig;
   root?: string;
   env?: string;
   url?: string;
@@ -21,9 +32,25 @@ type UserConfig = {
   devDumpIgnore?: string[];
 };
 
+function resolveOutputConfig(output?: UserOutputConfig): OutputConfig {
+  if (!output || output.kind !== "drizzle") {
+    return {
+      kind: "damian",
+      casing: output?.casing ?? "preserve",
+    };
+  }
+
+  return {
+    kind: "drizzle",
+    casing: output.casing ?? "preserve",
+    isoTimestamp: output.isoTimestamp ?? false,
+  };
+}
+
 export function config(userConfig: UserConfig): DamianConfig {
   return {
     driver: userConfig.driver ?? "postgres",
+    output: resolveOutputConfig(userConfig.output),
     root: userConfig.root ?? "./damian",
     env: userConfig.env ?? ".env",
     url: userConfig.url ?? process.env.DATABASE_URL,

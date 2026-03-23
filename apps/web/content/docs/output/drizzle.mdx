@@ -1,0 +1,34 @@
+---
+title: Drizzle
+description: Drizzle output configuration and usage
+---
+
+## Setup
+
+Set `output` to `drizzle` in `damian.config.ts`:
+
+```ts title="damian.config.ts"
+import { config } from "damian"
+
+export default config({
+    driver: "postgres",
+    output: {
+        kind: "drizzle",
+        casing: "preserve",
+        isoTimestamp: false
+    },
+    root: "./damian",
+    env: ".env",
+    url: process.env.DATABASE_URL
+})
+```
+
+You can also turn off drizzle deserialization of timestamps through `isoTimestamp: true`.
+
+---
+
+## Usage
+
+After running `damian generate`, just start importing drizzle schemas from the `.generated` file under `damian`.
+
+If you've configured an alias, it could be as simple as `import { UserTable } from 'tables'`

@@ -1049,8 +1049,7 @@ export function generateDrizzleTablesOutput(
         "    };",
         "  };",
         "};",
-        `type SafeStringify<T> = T extends string ? \`\${T}\` : T;`,
-        `type InferTypingOutput<T extends StandardSchemaLike> = SafeStringify<NonNullable<T[${quoteString("~standard")}]["types"]>["output"]>;`,
+        `type InferTypingOutput<T extends StandardSchemaLike> = NonNullable<T[${quoteString("~standard")}]["types"]>["output"];`,
       ]
     : [];
   const rawTimestampLines = context.usesRawTimestamp

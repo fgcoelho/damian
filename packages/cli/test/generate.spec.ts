@@ -524,45 +524,6 @@ describe("generateDrizzleTablesOutput()", () => {
     expect(output).toContain('createdAt: timestamp("created_at")');
   });
 
-  it("wraps InferTypingOutput with SafeStringify", () => {
-    const output = generateDrizzleTablesOutput(
-      {
-        tables: [
-          {
-            schema: "public",
-            table: "users",
-            columns: [
-              {
-                name: "role",
-                ordinalPosition: 1,
-                fullDataType: "varchar",
-                dataType: "character varying",
-                udtName: "varchar",
-                nullable: false,
-                defaultValue: null,
-                characterMaximumLength: null,
-                numericPrecision: null,
-                numericScale: null,
-                datetimePrecision: null,
-              },
-            ],
-            primaryKey: null,
-            uniqueConstraints: [],
-            foreignKeys: [],
-          },
-        ],
-      },
-      { "public.users.role": "custom" },
-      { kind: "drizzle", casing: "preserve", isoTimestamp: false },
-    );
-
-    expect(output).toContain("type SafeStringify<T>");
-    expect(output).not.toContain("export type SafeStringify<T>");
-    expect(output).toContain(
-      "type InferTypingOutput<T extends StandardSchemaLike> = SafeStringify<",
-    );
-  });
-
   it("emits syntactically valid TypeScript when custom typings are used", () => {
     const output = generateDrizzleTablesOutput(
       {
